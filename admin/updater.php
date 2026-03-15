@@ -414,17 +414,7 @@ ob_start();
 
 <div class="container-fluid" style="max-width:860px;padding:1.5rem">
 
-<?php if (!$configured): ?>
-<div class="config-warn mb-3">
-  ⚠ <strong>GitHub не налаштовано.</strong> Додайте в <code>.env</code>:<br><br>
-  <code>GITHUB_OWNER=your-username</code><br>
-  <code>GITHUB_REPO=fly-cms</code><br>
-  <code>GITHUB_TOKEN=ghp_xxx</code> &nbsp;← необов'язково, для приватних репозиторіїв
-  <div class="mt-2">
-    <a href="/admin/smtp_settings.php#github" class="btn btn-sm btn-primary">⚙ Налаштувати GitHub →</a>
-  </div>
-</div>
-<?php endif; ?>
+
 
 <!-- ── Статус версії ─────────────────────────────────────── -->
 <div class="upd-card">
@@ -433,7 +423,7 @@ ob_start();
     <div>
       <div style="font-weight:700">Оновлення fly-CMS</div>
       <div style="font-size:.78rem;opacity:.8">
-        <?= $configured ? "Репозиторій: {$ghOwner}/{$ghRepo}" : 'GitHub не налаштовано' ?>
+        <?= $configured ? "Репозиторій: {$ghOwner}/{$ghRepo}" : 'GitHub ' ?>
       </div>
     </div>
   </div>
