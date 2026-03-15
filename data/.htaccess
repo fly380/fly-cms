@@ -1,0 +1,9 @@
+# Заборонити доступ ззовні
+Order deny,allow
+Deny from all
+
+# Заборона індексації пошуковиками
+Header set X-Robots-Tag "noindex, nofollow"
+
+# Заборона індексації директорій
+Options -Indexes

@@ -1,0 +1,249 @@
+/* Загальний стиль */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    outline: 0;
+}
+
+/* Відступ для контенту під хедер */
+body > main {
+    flex: 1;
+}
+
+/* Секція з навігацією */
+.navbar {
+    background: #3B4346 url("/assets/images/bg01.jpg");
+    border-bottom: solid 1px #272d30;
+    box-shadow: inset 0px -1px 0px 0px #51575a;
+    text-shadow: -1px -1px 1px rgba(0, 0, 0, 0.75);
+}
+
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1030;
+}
+main {
+    margin-top: 70px; /* висота хедера (можеш підкоригувати) */
+}
+
+/* Контейнер для основного контенту */
+.main-content {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Кнопки */
+.btn-outline-primary {
+    background-color: #007bff;
+    color: white;
+    border: none;
+}
+
+.btn-outline-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+}
+
+/* Відступи для контейнера */
+.container {
+    padding-top: 40px;
+}
+
+/* Обгортка для горизонтального скролу на малих екранах */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Таблиця */
+.table-responsive table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px; /* Мінімальна ширина, щоб уникнути злипання */
+}
+
+/* Стилі клітинок */
+.table-responsive table th,
+.table-responsive table td {
+  padding: 8px;
+  border: 1px solid #7e8c8d;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Заголовок */
+.table-responsive thead tr {
+  background-color: #3598db;
+  color: white;
+  text-align: center;
+}
+
+/* Для маленьких екранів: дозволяє прокрутку */
+@media screen and (max-width: 768px) {
+  .table-responsive table {
+    font-size: 14px;
+  }
+}
+/* Футер */
+footer.footer {
+    background-color: #212529;
+    color: white;
+    text-align: center;
+    padding: 1rem 0;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 768px) {
+    .main-content {
+        margin: 10px;
+        padding: 15px;
+        box-shadow: none;
+    }
+
+    .container {
+        padding-top: 20px;
+    }
+
+    table td, table th {
+        padding: 6px;
+        font-size: 14px;
+    }
+
+    .btn-outline-primary,
+    .btn-outline-danger {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    main {
+        margin-top: 60px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 10px;
+    }
+
+    table thead {
+        font-size: 14px;
+    }
+
+    table td, table th {
+        font-size: 12px;
+    }
+}
+.content-wrapper {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        /* За потреби можна додати max-width або width */
+    }
+ .offcanvas-body a {
+        display: block;
+        padding: 12px 20px;
+        color: #212529;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 4px;
+    }
+
+    .offcanvas-body a:hover {
+        background-color: #0d6efd;
+        color: #fff;
+        text-decoration: none;
+    }
+.menu-link {
+    border-left: 4px solid transparent;
+    padding-left: 10px;
+    transition: all 0.3s ease;
+    display: block;
+    text-decoration: none;
+}
+
+.menu-link:hover {
+    border-left-color: #0d6efd;
+    background-color: #f8f9fa;
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.offcanvas-body ul.nav {
+    padding-left: 0;
+}
+
+.offcanvas-body .nav-item {
+    list-style: none;
+}
+
+.mobile-menu-list {
+    padding-left: 0;
+}
+
+.mobile-menu-item {
+    border: none;
+    padding: 0.5rem 0;
+    background-color: transparent;
+    font-size: 1.1rem;
+}
+
+.mobile-menu-item a {
+    color: #212529;
+    transition: color 0.3s ease;
+}
+
+.mobile-menu-item a:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+}
+.vertical-menu a {
+    margin-bottom: 0.5rem;
+}
+.vertical-menu .nav-link {
+    color: #000;
+    padding: 8px 16px;
+    display: block;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.vertical-menu .nav-link:hover {
+    background-color: #f0f0f0;
+}
+/* Дозволяє розгортати підменю при наведенні */
+.dropdown-hover:hover .dropdown-menu {
+	display: block;
+	margin-top: 0;
+}
+.dropdown-hover .dropdown-toggle::after {
+	margin-left: 0.3em;
+}
+.dropdown-hover:hover > .dropdown-menu {
+	display: block;
+}
+/* Для правильного відображення dropdown при hover */
+.dropdown-hover:hover > .dropdown-menu {
+	display: block;
+}
+
+.dropdown-menu {
+	margin-top: 0; /* не зміщує вниз */
+	top: 100%;     /* опускає під батьківську кнопку */
+	left: 0;
+}

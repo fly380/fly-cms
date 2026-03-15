@@ -1,0 +1,217 @@
+html, body { height: 100%; }
+
+body {
+            margin: 0;
+            padding-top: 56px;
+        }
+
+        /* Статична бокова панель — тільки для екранів ≥ 768px */
+        .sidebar {
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar {
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 220px;
+                height: 100vh;
+                background-color: #212529;
+                padding-top: 1rem;
+                padding-bottom: 2rem;
+                z-index: 1030;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            .sidebar a {
+                color: #ddd;
+                display: block;
+                padding: 12px 20px;
+                text-decoration: none;
+                font-weight: 500;
+            }
+
+            .sidebar a:hover, .sidebar a.active {
+                background-color: #0d6efd;
+                color: white;
+                text-decoration: none;
+            }
+
+            main.content {
+                margin-left: 220px;
+                padding: 2rem;
+            }
+
+            main.content.no-padding {
+                padding: 0;
+                overflow: hidden;
+                height: calc(100vh - 0px);
+                display: flex;
+                flex-direction: column;
+            }
+
+            footer {
+                margin-left: 220px;
+            }
+
+            .mobile-nav {
+                display: none;
+            }
+        }
+
+        /* Offcanvas меню — тільки для мобільних */
+        @media (max-width: 767.98px) {
+            .sidebar {
+                display: none;
+            }
+
+            main.content {
+                padding: 1rem;
+            }
+            main.content.no-padding {
+                padding: 0;
+            }
+        }
+		.offcanvas-body a {
+    display: block;
+    padding: 12px 20px;
+    color: #212529;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.offcanvas-body a:hover {
+    background-color: #0d6efd;
+    color: #fff;
+    text-decoration: none;
+}
+
+/* ── Підменю в сайдбарі ──────────────────────────────────────────── */
+.sidebar-submenu-toggle {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    color: #ddd;
+    padding: 12px 20px;
+    font-weight: 500;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.sidebar-submenu-toggle:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+.sidebar-submenu-toggle .arrow {
+    float: right;
+    transition: transform .2s;
+    font-style: normal;
+}
+.sidebar-submenu-toggle.open .arrow {
+    transform: rotate(90deg);
+}
+.sidebar-submenu {
+    display: none;
+    background-color: #1a1f24;
+}
+.sidebar-submenu.open {
+    display: block;
+}
+.sidebar-submenu a {
+    padding: 9px 20px 9px 36px;
+    font-size: .9rem;
+    color: #adb5bd;
+}
+.sidebar-submenu a:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* Offcanvas підменю (мобільне) */
+.offcanvas-body .sidebar-submenu-toggle {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    color: #212529;
+    padding: 12px 20px;
+    font-weight: 500;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+.offcanvas-body .sidebar-submenu-toggle:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+.offcanvas-body .sidebar-submenu-toggle .arrow {
+    float: right;
+    transition: transform .2s;
+}
+.offcanvas-body .sidebar-submenu-toggle.open .arrow {
+    transform: rotate(90deg);
+}
+.offcanvas-body .sidebar-submenu {
+    display: none;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+.offcanvas-body .sidebar-submenu.open {
+    display: block;
+}
+.offcanvas-body .sidebar-submenu a {
+    padding: 9px 20px 9px 36px;
+    font-size: .9rem;
+    color: #495057;
+    margin-bottom: 0;
+}
+.offcanvas-body .sidebar-submenu a:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* ── Full-bleed pages (Theme Builder) ────────────────────────────── */
+body.fullbleed-page {
+    padding-top: 0 !important;
+    overflow: hidden;
+    height: 100vh;
+}
+body.fullbleed-page footer {
+    display: none;
+}
+@media (min-width: 768px) {
+    body.fullbleed-page main.content.no-padding {
+        position: fixed;
+        top: 0;
+        left: 220px;
+        right: 0;
+        bottom: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100vh;
+    }
+}
+@media (max-width: 767.98px) {
+    body.fullbleed-page main.content.no-padding {
+        padding: 0;
+        overflow-y: auto;
+        height: calc(100vh - 56px);
+    }
+}
+
+body.fullbleed-page .sidebar {
+    top: 0 !important;
+}
+body.fullbleed-page .mobile-nav {
+    display: none !important;
+}

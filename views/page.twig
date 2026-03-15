@@ -1,0 +1,127 @@
+{# views/page.twig — публічна сторінка або запис #}
+{% extends 'layouts/base.twig' %}
+
+{% block content %}
+
+{% if is_post %}
+{# ══ СТОРІНКА ЗАПИСУ ══════════════════════════════════════════════ #}
+<div class="fly-content-wrap container" style="max-width:{{ container_max }}px">
+
+  {% if post_breadcrumbs %}
+  <nav class="fly-breadcrumb mt-3" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Головна</a></li>
+      <li class="breadcrumb-item active">{{ title }}</li>
+    </ol>
+  </nav>
+  {% endif %}
+
+  <div class="row">
+
+    {# Ліва бічна колонка з TOC #}
+    {% if post_sidebar and post_sidebar_pos == 'left' and toc|length > 0 %}
+    <div class="col-lg-3 order-lg-1">
+      <div class="card p-3 mb-3">
+        <h6 class="fw-bold">📋 Зміст</h6>
+        <ul class="list-unstyled mb-0">
+          {% for item in toc %}
+          <li style="padding-left:{{ (item.level - 2) * 12 }}px;font-size:.85rem">
+            <a href="#{{ item.anchor }}">{{ item.text }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="{{ post_sidebar ? 'col-lg-9' : 'col-12' }} {{ post_sidebar and post_sidebar_pos == 'left' ? 'order-lg-2' : '' }}">
+      <article class="fly-post-content mx-auto"
+               style="max-width:{{ post_sidebar ? '100%' : post_content_width ~ 'px' }}">
+
+        <h1 class="mb-3">{{ title }}</h1>
+
+        {# Мета — зверху #}
+        {% if post_show_meta and post_meta_pos == 'top' %}
+        <div class="fly-post-meta mb-4 pb-3 border-bottom d-flex flex-wrap gap-3 align-items-center">
+          {% if page_data.author %}<span><i class="bi bi-person-circle me-1"></i>{{ display_name(page_data.author) }}</span>{% endif %}
+          {% if page_data.created_at %}<span><i class="bi bi-calendar3 me-1"></i>{{ page_data.created_at|date_uk }}</span>{% endif %}
+          {% if not page_data.draft %}<span class="badge bg-success">Опубліковано</span>{% endif %}
+        </div>
+        {% endif %}
+
+        {# Inline TOC #}
+        {% if post_toc and toc|length > 0 %}
+        <div class="card bg-light mb-4 p-3">
+          <strong class="d-block mb-2">📑 Зміст</strong>
+          <ul class="list-unstyled mb-0">
+            {% for item in toc %}
+            <li style="padding-left:{{ (item.level - 2) * 14 }}px;font-size:.88rem">
+              <a href="#{{ item.anchor }}">{{ item.text }}</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {# Основний вміст — sanitize_html прибирає XSS, |raw виводить HTML #}
+        <div class="fly-post-body">
+          {{ content_html|sanitize_html }}
+        </div>
+
+        {# Мета — знизу #}
+        {% if post_show_meta and post_meta_pos == 'bottom' %}
+        <div class="fly-post-meta mt-4 pt-3 border-top d-flex flex-wrap gap-3">
+          {% if page_data.author %}<span><i class="bi bi-person-circle me-1"></i>{{ display_name(page_data.author) }}</span>{% endif %}
+          {% if page_data.created_at %}<span><i class="bi bi-calendar3 me-1"></i>{{ page_data.created_at|date_uk }}</span>{% endif %}
+        </div>
+        {% endif %}
+
+        {# Кнопки поширення #}
+        {% if post_show_share %}
+        <div class="fly-share-btns mt-4">
+          <span class="text-muted small me-2">Поділитись:</span>
+          <a href="https://t.me/share/url?url={{ share_url }}&text={{ share_title }}" target="_blank"
+             class="btn btn-sm btn-outline-secondary"><i class="bi bi-telegram"></i> Telegram</a>
+          <a href="https://www.facebook.com/sharer/sharer.php?u={{ share_url }}" target="_blank"
+             class="btn btn-sm btn-outline-secondary"><i class="bi bi-facebook"></i> Facebook</a>
+          <a href="https://twitter.com/intent/tweet?url={{ share_url }}&text={{ share_title }}" target="_blank"
+             class="btn btn-sm btn-outline-secondary"><i class="bi bi-twitter-x"></i> X</a>
+        </div>
+        {% endif %}
+
+      </article>
+    </div>
+
+    {# Права бічна колонка з TOC #}
+    {% if post_sidebar and post_sidebar_pos == 'right' and toc|length > 0 %}
+    <div class="col-lg-3">
+      <div class="card p-3 mb-3">
+        <h6 class="fw-bold">📋 Зміст</h6>
+        <ul class="list-unstyled mb-0">
+          {% for item in toc %}
+          <li style="padding-left:{{ (item.level - 2) * 12 }}px;font-size:.85rem">
+            <a href="#{{ item.anchor }}">{{ item.text }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>{# /row #}
+
+
+
+</div>{# /container #}
+
+{% else %}
+{# ══ ЗВИЧАЙНА СТОРІНКА ════════════════════════════════════════════ #}
+<div class="container py-4" style="max-width:{{ container_max }}px">
+  <div class="border p-4 rounded bg-light content-wrapper">
+    <h2 class="mb-4">{{ title }}</h2>
+    {{ content_html|sanitize_html }}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

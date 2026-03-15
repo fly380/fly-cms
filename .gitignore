@@ -1,0 +1,53 @@
+# fly-CMS .gitignore
+
+# ── Секрети і конфігурація ────────────────────────────────
+.env
+.env.local
+.env.production
+key.txt
+
+# ── База даних ────────────────────────────────────────────
+data/BD/
+data/backups/
+data/logs/
+data/tmp_update_*/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# ── Завантажені файли користувачів ───────────────────────
+uploads/
+
+# ── Кеш і тимчасові файли ────────────────────────────────
+data/.installed
+*.tmp
+*.log
+
+# ── Діагностичні файли (видаляти після використання) ─────
+admin/smtp_debug.php
+admin/support_diag.php
+
+# ── PHP залежності ────────────────────────────────────────
+vendor/
+composer.lock
+
+# ── Node.js ───────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── IDE / редактори ───────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Windows ───────────────────────────────────────────────
+desktop.ini
+$RECYCLE.BIN/
+
+# ── Бекапи ───────────────────────────────────────────────
+*.bak
+config.php.bak

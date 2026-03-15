@@ -1,0 +1,35 @@
+# fly-CMS — захист SQLAdmin (phpliteadmin)
+#
+# Рівні захисту:
+#   1. Цей .htaccess — обмежує прямий доступ до файлів (CSS, lang) крім точки входу
+#   2. phpadmin.php — PHP-сесія: доступ лише для admin/superadmin
+#   3. phpadmin.php — власний пароль phpliteadmin ($password)
+#
+# Таким чином зловмисник без активної адмін-сесії не отримає навіть
+# сторінку введення пароля.
+
+# Забороняємо directory listing
+Options -Indexes
+
+# Дозволяємо тільки phpadmin.php як точку входу.
+# Решта файлів (CSS, lang) підключається через include — не через HTTP.
+<FilesMatch "^(?!phpadmin\.php$).*$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# phpadmin.php — дозволяємо (захист реалізований у самому файлі через PHP-сесію)
+<Files "phpadmin.php">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+</Files>

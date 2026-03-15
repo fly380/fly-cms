@@ -1,0 +1,75 @@
+{# views/partials/menu.twig — рекурсивний рендер меню #}
+
+{% macro render_items(items, vertical, role, logged_in) %}
+  {% import _self as self %}
+  {% for item in items %}
+    {% if item.visible %}
+      {# Перевірка видимості по ролі #}
+      {% set vis = item.visibility_role|default('all') %}
+      {% set show = false %}
+      {% if vis == 'all' %}
+        {% set show = true %}
+      {% elseif vis == 'auth' %}
+        {% set show = logged_in %}
+      {% elseif vis == 'editor_admin' %}
+        {% set show = role in ['admin', 'redaktor', 'superadmin'] %}
+      {% elseif vis == 'admin' %}
+        {% set show = role in ['admin', 'superadmin'] %}
+      {% else %}
+        {% set show = (vis == role) %}
+      {% endif %}
+
+      {% if show and not (item.auth_only and not logged_in) %}
+        {% set type = item.type|default('link') %}
+        {% set has_children = item.children is defined and item.children|length > 0 %}
+
+        {% if vertical %}
+          <li class="nav-item">
+            {% if type == 'login_logout' %}
+              {% if logged_in %}
+                <a href="/templates/logout.php" class="nav-link text-danger" data-translate="yes">Вийти</a>
+              {% else %}
+                <a href="/templates/login.php" class="nav-link text-success" data-translate="yes">Увійти</a>
+              {% endif %}
+            {% elseif type == 'language_switcher' %}
+              <div id="lang-switcher-mount" class="ms-2"></div>
+            {% else %}
+              <a class="nav-link" href="{{ item.url }}" data-translate="yes">{{ item.title }}</a>
+              {% if has_children %}
+                <ul class="nav flex-column ms-3">
+                  {{ self.render_items(item.children, true, role, logged_in) }}
+                </ul>
+              {% endif %}
+            {% endif %}
+          </li>
+        {% else %}
+          {% if type == 'login_logout' %}
+            {% if logged_in %}
+              <a href="/templates/logout.php" class="btn btn-outline-danger" data-translate="yes">Вийти</a>
+            {% else %}
+              <a href="/templates/login.php" class="btn btn-outline-success" data-translate="yes">Увійти</a>
+            {% endif %}
+          {% elseif type == 'language_switcher' %}
+            <div id="lang-switcher-mount"></div>
+          {% elseif has_children %}
+            <div class="btn-group dropdown dropdown-hover" style="position:relative">
+              <a href="{{ item.url }}" class="btn btn-outline-light" data-translate="yes">{{ item.title }}</a>
+              <button type="button" class="btn btn-outline-light dropdown-toggle dropdown-toggle-split"
+                      data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden" data-translate="yes">Розгорнути підменю</span>
+              </button>
+              <ul class="dropdown-menu">
+                {% for child in item.children %}
+                  <li><a class="dropdown-item" href="{{ child.url }}" data-translate="yes">{{ child.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            <a href="{{ item.url }}" class="btn btn-outline-light" data-translate="yes">{{ item.title }}</a>
+          {% endif %}
+        {% endif %}
+
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
