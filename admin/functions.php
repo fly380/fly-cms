@@ -1,5 +1,7 @@
 <?php
 
+define('FLY_ADMIN_CONTEXT', true);
+
 // ── Підключаємо центральну конфігурацію ───────────────────────────
 // config.php визначає: fly_send_security_headers(), fly_db(), get_setting(), ts()
 // fly_send_security_headers() викликається в кожному ентрипоінті окремо.
@@ -41,6 +43,16 @@ function connectToDatabase(string $path = ''): PDO {
                 run_migrations($pdo);
             }
             $migrationsDone = true;
+        }
+
+        // Завантажити плагіни один раз
+        static $pluginsLoaded = false;
+        if (!$pluginsLoaded) {
+            $pluginsFile = $_SERVER['DOCUMENT_ROOT'] . '/data/plugins.php';
+            if (file_exists($pluginsFile)) {
+                require_once $pluginsFile;
+            }
+            $pluginsLoaded = true;
         }
 
         return $pdo;

@@ -1,0 +1,10 @@
+{
+    "slug":        "seo-meta",
+    "name":        "SEO Meta Tags",
+    "description": "Додає Open Graph і Twitter Card мета-теги до публічних сторінок на основі контенту поста/сторінки.",
+    "version":     "1.0.0",
+    "author":      "fly-CMS",
+    "icon":        "🔍",
+    "hooks":       ["cms.post.content", "cms.page.content", "cms.admin.head"],
+    "settings":    true
+}

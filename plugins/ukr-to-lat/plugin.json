@@ -1,0 +1,9 @@
+{
+    "slug":        "ukr-to-lat",
+    "name":        "Транслітерація slug",
+    "description": "Автоматично перетворює заголовки постів і сторінок зі кириличних символів у латинські slug при збереженні.",
+    "version":     "1.0.0",
+    "author":      "fly-CMS",
+    "icon":        "🔤",
+    "hooks":       ["cms.post.slug", "cms.page.slug"]
+}

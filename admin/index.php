@@ -372,6 +372,8 @@ ob_start();
         </div>
     </div>
 
+<?php if (function_exists('fly_do_action')) fly_do_action('cms.dashboard.widgets'); ?>
+
 <?php
 $content_html = ob_get_clean();
 include __DIR__ . '/admin_template.php';

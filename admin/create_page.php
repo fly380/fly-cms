@@ -38,6 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $title = trim($_POST['new_page_title']);
         $slug = function_exists('ctl_transliterate') ? ctl_transliterate($title) : $title;
         $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9-]+/', '-', $slug), '-'));
+        if (function_exists('fly_apply_filters')) {
+            $slug = fly_apply_filters('cms.page.slug', $slug, $title);
+        }
         
         // Базовий вміст
         $content = $_POST['content'] ?? '<p>Новий контент...</p>';
@@ -123,6 +126,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($stmt->execute([$slug])) {
                 $deleted++;
                 log_action("🗑️ Видалив сторінку '{$slug}'", $username);
+                if (function_exists('fly_do_action')) {
+                    fly_do_action('cms.page.saved', (int)$pdo->lastInsertId(), [
+                        'slug' => $slug, 'title' => $title, 'action' => 'create',
+                    ]);
+                }
             } else {
                 $errors++;
             }

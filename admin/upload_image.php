@@ -267,6 +267,9 @@ $sizeStr   = img_format_bytes(file_exists($targetPath) ? filesize($targetPath) :
 log_action("📎 Завантажено: {$finalName} ({$sizeStr})");
 
 ob_clean(); // фінальне очищення буферу перед відповіддю
+if (function_exists('fly_do_action')) {
+    fly_do_action('cms.media.uploaded', $savedPath ?? '', $publicUrl);
+}
 echo json_encode(['location' => $publicUrl]);
 exit;
 

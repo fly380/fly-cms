@@ -1,0 +1,14 @@
+{
+    "slug":        "my-plugin",
+    "name":        "Мій плагін",
+    "description": "Короткий опис що робить плагін.",
+    "version":     "1.0.0",
+    "author":      "Ваше ім'я",
+    "url":         "https://your-site.com",
+    "icon":        "⚡",
+    "hooks": [
+        "cms.post.saved",
+        "cms.post.content"
+    ],
+    "settings":    false
+}

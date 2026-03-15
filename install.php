@@ -10,7 +10,7 @@
  */
 
 define('FLY_INSTALLER_VER', '1.0.0');
-define('FLY_CMS_VER',       '2.6.5-AI');
+define('FLY_CMS_VER',       '2.7.0-AI');
 
 // ─────────────────────────────────────────────────────────────────
 // Bootstrap: сесія + ROOT
@@ -163,6 +163,41 @@ SQL;
 }
 
 // MySQL schema — читаємо з файлу або вбудована копія
+/**
+ * Правильно розбиває SQL файл на окремі statements.
+ * Відкидає коментарі (--) і SET рядки, але не плутає їх з
+ * багаторядковими CREATE TABLE що містять ці рядки всередині.
+ */
+function fly_split_sql(string $sql): array {
+    $statements = [];
+    $current    = '';
+
+    foreach (explode("
+", $sql) as $line) {
+        $trimmed = trim($line);
+        // Пропускаємо порожні рядки і однорядкові коментарі і SET команди
+        // АЛЕ лише якщо поточний statement ще не почався
+        if ($current === '') {
+            if ($trimmed === '' || preg_match('/^--/', $trimmed) || preg_match('/^SET\s/i', $trimmed)) {
+                continue;
+            }
+        }
+        $current .= $line . "
+";
+        // Якщо рядок закінчується на ; — statement завершено
+        if (substr($trimmed, -1) === ';') {
+            $stmt = trim(rtrim(trim($current), ';'));
+            if ($stmt !== '') $statements[] = $stmt;
+            $current = '';
+        }
+    }
+    // Залишок без крапки з комою
+    $stmt = trim(rtrim(trim($current), ';'));
+    if ($stmt !== '') $statements[] = $stmt;
+
+    return $statements;
+}
+
 function get_mysql_schema(string $root): string {
     $f = $root . '/data/mysql_schema.sql';
     if (file_exists($f)) return file_get_contents($f);
@@ -264,8 +299,10 @@ if (!empty($_GET['action']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Схема
                     $schema = get_mysql_schema($ROOT);
                     if (!$schema) throw new \RuntimeException('mysql_schema.sql не знайдено і не вбудований');
-                    foreach (array_filter(array_map('trim',explode(';',$schema))) as $stmt) {
-                        if ($stmt && !preg_match('/^(--|SET\s)/i',$stmt)) $pdo->exec($stmt);
+                    // Правильний парсер SQL: фільтруємо коментарі і SET порядково,
+                    // але не відкидаємо цілий багаторядковий блок через них
+                    foreach (fly_split_sql($schema) as $stmt) {
+                        if ($stmt !== '') $pdo->exec($stmt);
                     }
                 } else {
                     $sqlitePath = "$ROOT/data/BD/database.sqlite";
@@ -727,7 +764,7 @@ body{
 <div class="hero">
   <span class="hero-plane">✈</span>
   <div class="hero-title">fly-CMS Installer</div>
-  <div class="hero-sub">Система встановлення · WordPress-style, без зайвих кроків</div>
+  <div class="hero-sub">Система встановлення, без зайвих кроків</div>
   <div class="hero-badge">v<?= FLY_CMS_VER ?> · PHP <?= PHP_VERSION ?></div>
 </div>
 

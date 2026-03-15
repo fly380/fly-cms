@@ -30,6 +30,7 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 	<?php endif; ?>
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 	<link href="/../assets/css/menu.css" rel="stylesheet" />	
+<?php if (function_exists('fly_do_action')) fly_do_action('cms.admin.head'); ?>
 </head>
 <body class="<?= ($fullBleed??false) ? 'fullbleed-page' : '' ?>">
 	<!-- Навбар для мобільних -->
@@ -73,8 +74,10 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 					<a href="/admin/backup.php">💾 Резервне копіювання</a>					
 					<a href="/admin/support.php">🛠️ Підтримка</a>
 					<a href="/admin/updater.php">🔄 Оновлення CMS</a>
+					<a href="/admin/plugins.php">🧩 Плагіни</a>
 				</div>
 			<?php endif; ?>
+			<?php if (function_exists('fly_do_action')) fly_do_action('cms.admin.menu'); ?>
 			<a href="/templates/logout.php" class="text-danger">Вийти</a>
 		</div>
 	</div>
@@ -105,8 +108,10 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 					<a href="/admin/backup.php">💾 Резервне копіювання</a>
 					<a href="/admin/support.php">🛠️ Підтримка</a>
 					<a href="/admin/updater.php">🔄 Оновлення CMS</a>
+					<a href="/admin/plugins.php">🧩 Плагіни</a>
 				</div>
 			<?php endif; ?>
+			<?php if (function_exists('fly_do_action')) fly_do_action('cms.admin.menu'); ?>
 			<a href="/templates/logout.php" class="text-danger">Вийти</a>
 	</div>
 	<!-- Основний контент -->
@@ -117,6 +122,7 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 	<footer class="text-center py-3 bg-light">
 		<small>&copy; <?= date('Y') ?> <?= $cmsName ?> <?= $cmsVersion ?> — Адмінка</small>
 	</footer>
+	<?php if (function_exists('fly_do_action')) fly_do_action('cms.admin.footer'); ?>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 	<script>
 	function toggleSubmenu(btn) {
@@ -126,7 +132,7 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 	// Автовідкриття підменю якщо поточна сторінка в ньому
 	document.addEventListener('DOMContentLoaded', function() {
 		var cur = window.location.pathname.split('/').pop();
-		var submenuPages = ['user_list.php','invite.php','meta_settings.php','logs.php','phpadmin.php','totp_users.php','totp_setup.php','file_manager.php','backup.php','db_migrate.php','support.php','updater.php'];
+		var submenuPages = ['user_list.php','invite.php','meta_settings.php','logs.php','phpadmin.php','totp_users.php','totp_setup.php','file_manager.php','backup.php','db_migrate.php','support.php','updater.php','plugins.php'];
 		if (submenuPages.some(function(p){ return cur.indexOf(p) !== -1; })) {
 			document.querySelectorAll('.sidebar-submenu-toggle').forEach(function(btn) {
 				btn.classList.add('open');
