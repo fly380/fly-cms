@@ -358,6 +358,7 @@ if (!empty($_GET['action']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $env .= "SMTP_FROM_EMAIL=noreply@example.com\nSMTP_ENCRYPTION=tls\n";
                 $dbAdminPass = bin2hex(random_bytes(8));
                 $env .= "\n# phpLiteAdmin\nPHPLITEADMIN_PASSWORD={$dbAdminPass}\n";
+                $env .= "\n# GitHub (оновлення CMS)\nGITHUB_OWNER=fly380\nGITHUB_REPO=fly-cms\n";
                 file_put_contents($envPath, $env);
 
                 if ($envDir === $ROOT) {

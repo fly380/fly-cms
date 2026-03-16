@@ -44,8 +44,9 @@ if (empty($_SESSION['csrf_updater'])) {
 $csrf = $_SESSION['csrf_updater'];
 
 // ─── Конфіг GitHub ────────────────────────────────────────────────
-$ghOwner = env('GITHUB_OWNER', '');
-$ghRepo  = env('GITHUB_REPO',  '');
+// Дефолти вшиті — працюють без .env. Перевизначаються через .env якщо є.
+$ghOwner = env('GITHUB_OWNER', 'fly380');
+$ghRepo  = env('GITHUB_REPO',  'fly-cms');
 $ghToken = env('GITHUB_TOKEN', '');
 
 $configured = $ghOwner && $ghRepo;
@@ -253,7 +254,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rel     = $res['data'];
         $latest  = ltrim($rel['tag_name'] ?? '0.0.0', 'v');
         $current = ltrim($currentVersion, 'v');
-        $hasUpdate = version_compare($latest, $current, '>');
+        $hasUpdate = version_compare(
+            preg_replace('/-[A-Za-z]+$/', '', $latest),
+            preg_replace('/-[A-Za-z]+$/', '', $current),
+            '>'
+        );
 
         echo json_encode([
             'ok'         => true,
@@ -549,8 +554,10 @@ ob_start();
   <div class="upd-body">
     <div class="fw-semibold small mb-3 text-muted">Останні релізи GitHub</div>
     <?php foreach ($releases as $i => $rel):
-      $isNewer = version_compare($rel['tag'], ltrim($currentVersion,'v'), '>');
-      $isCurrent = version_compare($rel['tag'], ltrim($currentVersion,'v'), '==');
+      $_tag = preg_replace('/-[A-Za-z]+$/', '', $rel['tag']);
+      $_cur = preg_replace('/-[A-Za-z]+$/', '', ltrim($currentVersion,'v'));
+      $isNewer   = version_compare($_tag, $_cur, '>');
+      $isCurrent = version_compare($_tag, $_cur, '==');
     ?>
     <div class="release-item <?= $i===0?'latest':'' ?>">
       <div class="d-flex align-items-center gap-2 flex-wrap">

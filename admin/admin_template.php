@@ -64,9 +64,6 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 				<div class="sidebar-submenu">
 					<a href="user_list.php">👥 Користувачі</a>
 					<a href="invite.php">✉️ Запрошення</a>
-					<?php if (in_array($_SESSION['role'], ['superadmin'])): ?>
-					<a href="meta_settings.php?success=1">📋 Опис 👑</a>
-					<?php endif; ?>
 					<a href="/admin/logs.php">📄 Переглянути логі</a>
 					<a href="/admin/SQLAdmin/phpadmin.php">🗄️ База даних</a>					
 					<a href="/admin/file_manager.php">📁 Файли</a>
@@ -97,9 +94,6 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 				<div class="sidebar-submenu">
 					<a href="user_list.php">👥 Користувачі</a>
 					<a href="invite.php">✉️ Запрошення</a>
-					<?php if (in_array($_SESSION['role'], ['superadmin'])): ?>
-					<a href="meta_settings.php?success=1">📋 Опис 👑</a>
-					<?php endif; ?>
 					<a href="/admin/logs.php">📄 Переглянути логі</a>
 					<a href="/admin/SQLAdmin/phpadmin.php" target="_blank">🗄️ База даних</a>
 					<a href="/admin/file_manager.php">📁 Файли</a>

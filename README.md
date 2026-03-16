@@ -8,7 +8,7 @@
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.9.0--AI-2E5FA3?style=flat-square)](https://github.com/fly380/fly-cms/releases)
+[![Version](https://img.shields.io/badge/version-2.9.1--AI-2E5FA3?style=flat-square)](https://github.com/fly380/fly-cms/releases)
 
 [Встановлення](#-встановлення) · [Архітектура](#-архітектура) · [Безпека](#-безпека) · [Оновлення](#-оновлення)
 
@@ -308,7 +308,7 @@ $pdo->exec('PRAGMA foreign_keys = ON');
 
 Міграції запускаються **автоматично** при кожному підключенні через `connectToDatabase()`. Lock-файл `data/locks/migrations.lock` гарантує одноразове виконання кожної версії (поточна: 9).
 
-> **Проблеми зі схемою після оновлення?** Використайте `admin/run_migrations.php` — скидає lock і примусово застосовує всі міграції. Видаліть файл після використання.
+> **Проблеми зі схемою після оновлення?** Зверніться до тікет-системи підтримки або відновіть `admin/run_migrations.php` з репозиторію локально — скидає lock і примусово застосовує всі міграції. Видаліть файл після використання.
 
 ---
 
@@ -458,6 +458,7 @@ rsync -avz --exclude='.env' --exclude='data/BD/' \
 
 | Версія | Основні зміни |
 |--------|---------------|
+| **2.9.1-AI** | Виправлено `version_compare` з суфіксом `-AI`, GITHUB_OWNER/REPO вшиті в updater, `.env` генерується з GitHub-змінними |
 | **2.9.0-AI** | GROQ API Key перенесено у site_settings (вкладка Загальне), `ai_settings.php` видалено, `meta_settings.php` виключено з репо, модалка підтвердження у menu_editor |
 | **2.8.0-AI** | Система плагінів (hooks/filters), SQLite-only (MySQL видалено), виправлена схема БД (20 таблиць), phpLiteAdmin CSS inline |
 | **2.7.0-AI** | Тікет-підтримка, `smtp_helper.php` (SSL/TLS), SMTP через UI, автооновлення GitHub, запрошення з email |
