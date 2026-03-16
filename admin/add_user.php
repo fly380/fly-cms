@@ -1,9 +1,5 @@
 <?php
 // Показ усіх помилок
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
-error_reporting(E_ALL);
-
 session_start();
 
 // Перевірка прав доступу
@@ -14,6 +10,7 @@ if (!isset($_SESSION['loggedin']) || !in_array($_SESSION['role'], ['admin', 'red
 
 // Підключення функцій
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/smtp_helper.php';
 require_once __DIR__ . '/../data/totp.php';
 require_once __DIR__ . '/qr_generator.php';
 
@@ -130,77 +127,20 @@ function sendRegistrationEmail($email, $username, $password, $totp_secret = '') 
 	$body_text .= "З повагою,\nАдміністрація CMS\n";
 	
 	$mailResult = ['sent' => false, 'error' => 'Email не налаштований', 'method' => 'None'];
-	
-	// Завантажуємо конфіг
-	$configPath = __DIR__ . '/email_config.php';
-	
-	if (!file_exists($configPath)) {
-		$mailResult['error'] = 'email_config.php не знайдено';
-		goto log_result;
-	}
-	
-	// Завантажимо конфіг
-	$config = @include($configPath);
-	
-	// Перевіримо чи конфіг завантажений правильно
-	if (!is_array($config)) {
-		$mailResult['error'] = 'email_config.php не повертає масив';
-		goto log_result;
-	}
-	
-	if (!isset($config['smtp'])) {
-		$mailResult['error'] = 'smtp ключ відсутній в конфігу';
-		goto log_result;
-	}
-	
-	$smtp = $config['smtp'];
-	
-	// Перевіримо чи SMTP активна
-	if (empty($smtp['enabled'])) {
-		$mailResult['error'] = 'SMTP вимкнена в конфігу';
-		goto log_result;
-	}
-	
-	// Перевіримо всі необхідні параметри
-	if (empty($smtp['host'])) {
-		$mailResult['error'] = 'host не налаштований';
-		goto log_result;
-	}
-	if (empty($smtp['port'])) {
-		$mailResult['error'] = 'port не налаштований';
-		goto log_result;
-	}
-	if (empty($smtp['username'])) {
-		$mailResult['error'] = 'username не налаштований';
-		goto log_result;
-	}
-	if (empty($smtp['password'])) {
-		$mailResult['error'] = 'password не налаштований';
-		goto log_result;
-	}
-	
-	// Всі параметри є - спробуємо SMTP
-	$host = $smtp['host'];
-	$port = (int)$smtp['port'];
-	$username_smtp = $smtp['username'];
-	$password_smtp = $smtp['password'];
-	$encryption = $smtp['encryption'] ?? 'tls';
-	$from_email = $smtp['from_email'] ?? 'noreply@cms.local';
-	$from_name = $smtp['from_name'] ?? 'CMS';
-	
+
+	// fly_smtp_send() читає налаштування з .env через smtp_helper.php
 	try {
 		$res = fly_smtp_send($email, $subject, $body_html, $body_text);
 		if ($res['sent']) {
-			$mailResult = ['sent' => true, 'error' => '', 'method' => 'SMTP Socket'];
+			$mailResult = ['sent' => true, 'error' => '', 'method' => 'SMTP'];
 		} else {
-			$mailResult['error'] = $res['error'];
+			$mailResult['error'] = $res['error'] ?? 'SMTP помилка';
 		}
 	} catch (Exception $e) {
 		$mailResult['error'] = 'Exception: ' . $e->getMessage();
 	}
-	
+
 	// Fallback на PHP mail() якщо SMTP не вдалася
-	log_result:
 	if (!$mailResult['sent'] && function_exists('mail')) {
 		$boundary = '====Boundary_' . md5(time()) . '====';
 		
@@ -360,13 +300,11 @@ ob_start();
 	</div>
 
 	<?php
-	// ── SMTP статус ──────────────────────────────────────────────
-	$_smtpCfg  = @include __DIR__ . '/email_config.php';
-	$_smtpArr  = is_array($_smtpCfg) ? ($_smtpCfg['smtp'] ?? []) : [];
-	$_smtpOn   = !empty($_smtpArr['enabled']);
-	$_smtpHost = $_smtpArr['host']     ?? '';
-	$_smtpUser = $_smtpArr['username'] ?? '';
-	$_smtpPass = $_smtpArr['password'] ?? '';
+	// ── SMTP статус (читаємо з .env через env(), як решта CMS) ──────
+	$_smtpOn   = env('SMTP_ENABLED', 'false') === 'true';
+	$_smtpHost = env('SMTP_HOST', '');
+	$_smtpUser = env('SMTP_USERNAME', '');
+	$_smtpPass = env('SMTP_PASSWORD', '');
 	$_smtpOk   = $_smtpOn && $_smtpHost && $_smtpUser && $_smtpPass;
 	$_isGmail  = (strpos($_smtpHost, 'gmail') !== false);
 	?>

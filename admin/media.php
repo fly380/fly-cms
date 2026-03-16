@@ -212,6 +212,11 @@ function getAllMediaFiles($dir, $excludeDir) {
                 if (strpos($fileInfo->getFilename(), 'temp_') === 0) {
                     continue;
                 }
+
+                // Пропускаємо приховані файли (.htaccess, .env, .gitignore тощо)
+                if (strpos($fileInfo->getFilename(), '.') === 0) {
+                    continue;
+                }
                 
                 $relativePath = str_replace(realpath(__DIR__ . '/../'), '', $realPath);
                 $relativePath = str_replace('\\', '/', $relativePath);

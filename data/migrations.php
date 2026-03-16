@@ -12,7 +12,7 @@
 
 function run_migrations(PDO $pdo): void {
     $lockFile       = __DIR__ . '/locks/migrations.lock';
-    $currentVersion = 9; // збільшуй при додаванні нових міграцій
+    $currentVersion = 10; // збільшуй при додаванні нових міграцій
 
     if (file_exists($lockFile) && (int)file_get_contents($lockFile) >= $currentVersion) {
         return;
@@ -129,6 +129,10 @@ function run_migrations(PDO $pdo): void {
             last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             is_active    INTEGER NOT NULL DEFAULT 1
         )");
+
+        // ── 10: гарантуємо індекси user_sessions ─────────────────────
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_usess_login  ON user_sessions (login)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_usess_active ON user_sessions (is_active, last_seen_at)");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS backup_settings (
             key   TEXT PRIMARY KEY,

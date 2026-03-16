@@ -4,6 +4,19 @@
 
 ---
 
+## [2.9.2-AI] — 2026-03-16
+
+### Виправлено
+- `templates/login.php` — після успішного входу тепер записується рядок у таблицю `user_sessions`; без цього Dashboard завжди показував «0 онлайн» і порожні «Останні входи»
+- `templates/logout.php` — при виході встановлюється `is_active = 0` у `user_sessions`; без цього користувач залишався «онлайн» ще 15 хвилин після виходу
+- `admin/index.php` — запити до `user_sessions` виправлено на `datetime('now','localtime')` замість UTC; усуває невідповідність часу між записом і порівнянням
+- `admin/add_user.php` — додано відсутній `require_once 'smtp_helper.php'`; без нього виклик `fly_smtp_send()` викликав HTTP 500 при додаванні користувача
+- `admin/add_user.php` — видалено мертвий код читання `email_config.php`; SMTP-конфіг тепер читається виключно з `.env` через `fly_smtp_send()`
+- `admin/media.php` — приховані файли (`.htaccess`, `.env`, `.gitignore`) більше не відображаються у медіабібліотеці
+- `data/migrations.php` — версія 10: додано `CREATE TABLE IF NOT EXISTS user_sessions` з індексами; гарантує створення таблиці на існуючих БД після оновлення
+
+---
+
 ## [2.9.1-AI] — 2026-03-16
 
 ### Виправлено

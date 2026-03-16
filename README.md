@@ -8,7 +8,7 @@
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=flat-square&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.9.1--AI-2E5FA3?style=flat-square)](https://github.com/fly380/fly-cms/releases)
+[![Version](https://img.shields.io/badge/version-2.9.2--AI-2E5FA3?style=flat-square)](https://github.com/fly380/fly-cms/releases)
 
 [Встановлення](#-встановлення) · [Архітектура](#-архітектура) · [Безпека](#-безпека) · [Оновлення](#-оновлення)
 
@@ -458,6 +458,7 @@ rsync -avz --exclude='.env' --exclude='data/BD/' \
 
 | Версія | Основні зміни |
 |--------|---------------|
+| **2.9.2-AI** | Dashboard: `user_sessions` заповнюється при вході/виході, виправлено UTC→localtime, HTTP 500 у `add_user.php`, `.htaccess` прихований у медіа, міграція v10 |
 | **2.9.1-AI** | Виправлено `version_compare` з суфіксом `-AI`, GITHUB_OWNER/REPO вшиті в updater, `.env` генерується з GitHub-змінними |
 | **2.9.0-AI** | GROQ API Key перенесено у site_settings (вкладка Загальне), `ai_settings.php` видалено, `meta_settings.php` виключено з репо, модалка підтвердження у menu_editor |
 | **2.8.0-AI** | Система плагінів (hooks/filters), SQLite-only (MySQL видалено), виправлена схема БД (20 таблиць), phpLiteAdmin CSS inline |

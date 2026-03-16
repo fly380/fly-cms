@@ -26,13 +26,13 @@ if ($hasSessions) {
     $online = $pdo->query("
         SELECT DISTINCT login, ip, last_seen_at
         FROM user_sessions
-        WHERE is_active = 1 AND last_seen_at > datetime('now', '-15 minutes')
+        WHERE is_active = 1 AND last_seen_at > datetime('now', 'localtime', '-15 minutes')
         ORDER BY last_seen_at DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     // Оновлюємо last_seen для поточного адміна
     if (!empty($_SESSION['username'])) {
-        $pdo->prepare("UPDATE user_sessions SET last_seen_at = datetime('now') WHERE login = ? AND is_active = 1")
+        $pdo->prepare("UPDATE user_sessions SET last_seen_at = datetime('now','localtime') WHERE login = ? AND is_active = 1")
             ->execute([$_SESSION['username']]);
     }
 }
