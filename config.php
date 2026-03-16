@@ -80,7 +80,7 @@ if (!function_exists('fly_send_security_headers')) {
 }
 
 // ── Глобальний PDO singleton (fly_db()) ───────────────────────────
-// Повертає єдине PDO з'єднання на PHP-процес.
+// Повертає єдине SQLite-з'єднання на PHP-процес.
 // Всі компоненти (HomeService, page.php, get_setting, get_display_name)
 // використовують цей самий екземпляр замість власних new PDO().
 if (!function_exists('fly_db')) {
@@ -88,61 +88,22 @@ if (!function_exists('fly_db')) {
         static $instance = null;
         if ($instance !== null) return $instance;
 
-        // Гарантуємо що .env завантажено до читання змінних БД
-        static $envLoaded = false;
-        if (!$envLoaded) {
-            $envLoaded = true;
-            $envCandidates = [
-                defined('FLY_STORAGE_ROOT') ? FLY_STORAGE_ROOT . '/.env' : '',
-                defined('FLY_ROOT')         ? FLY_ROOT . '/.env'         : '',
-            ];
-            foreach ($envCandidates as $ef) {
-                if ($ef && file_exists($ef)) {
-                    foreach (file($ef, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                        $line = trim($line);
-                        if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
-                        [$k, $v] = explode('=', $line, 2);
-                        $k = trim($k); $v = trim($v);
-                        if (!getenv($k)) { putenv("$k=$v"); $_ENV[$k] = $v; }
-                    }
-                    break;
-                }
-            }
-        }
-
-        // Читаємо драйвер з .env (завантажується нижче, але .env може бути
-        // вже завантажений раніше через putenv/getenv)
-        $driver = strtolower(getenv('DB_DRIVER') ?: ($_ENV['DB_DRIVER'] ?? 'sqlite'));
+        // SQLite — шукаємо БД в FLY_STORAGE_ROOT, fallback у webroot
+        $storagePath = FLY_STORAGE_ROOT . '/data/BD/database.sqlite';
+        $legacyPath  = FLY_ROOT         . '/data/BD/database.sqlite';
+        $path = file_exists($storagePath) ? $storagePath : $legacyPath;
 
         try {
-            if ($driver === 'mysql') {
-                $host    = getenv('DB_HOST')    ?: ($_ENV['DB_HOST']    ?? '127.0.0.1');
-                $port    = getenv('DB_PORT')    ?: ($_ENV['DB_PORT']    ?? '3306');
-                $dbname  = getenv('DB_NAME')    ?: ($_ENV['DB_NAME']    ?? '');
-                $user    = getenv('DB_USER')    ?: ($_ENV['DB_USER']    ?? '');
-                $pass    = getenv('DB_PASS')    ?: ($_ENV['DB_PASS']    ?? '');
-                $charset = getenv('DB_CHARSET') ?: ($_ENV['DB_CHARSET'] ?? 'utf8mb4');
-                $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";
-                $pdo = new PDO($dsn, $user, $pass, [
-                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES   => false,
-                ]);
-            } else {
-                // SQLite — шукаємо БД в FLY_STORAGE_ROOT, fallback у webroot
-                $storagePath = FLY_STORAGE_ROOT . '/data/BD/database.sqlite';
-                $legacyPath  = FLY_ROOT         . '/data/BD/database.sqlite';
-                $path = file_exists($storagePath) ? $storagePath : $legacyPath;
-                $pdo  = new PDO('sqlite:' . $path);
-                $pdo->setAttribute(PDO::ATTR_ERRMODE,            PDO::ERRMODE_EXCEPTION);
-                $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-                $pdo->exec('PRAGMA journal_mode = WAL');
-                $pdo->exec('PRAGMA busy_timeout = 3000');
-            }
+            $pdo = new PDO('sqlite:' . $path);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE,            PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            $pdo->exec('PRAGMA journal_mode = WAL');
+            $pdo->exec('PRAGMA busy_timeout = 3000');
+            $pdo->exec('PRAGMA foreign_keys = ON');
         } catch (PDOException $e) {
             http_response_code(500);
             error_log('fly_db(): ' . $e->getMessage());
-            exit('Помилка з\'єднання з базою даних.');
+            exit('Помилка підключення до бази даних.');
         }
 
         $instance = $pdo;

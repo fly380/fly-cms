@@ -3778,14 +3778,15 @@ header('Content-Type: text/html; charset=utf-8');
 if(isset($_GET['theme'])) $theme = basename($_GET['theme']);
 
 // allow themes to be dropped in subfolder "themes"
-if(is_file('themes/'.$theme)) $theme = 'themes/'.$theme;
+if(is_file(__DIR__.'/themes/'.$theme)) $theme = 'themes/'.$theme;
 
-if (file_exists($theme))
-	// an external stylesheet exists - import it
-	echo "<link href='{$theme}' rel='stylesheet' type='text/css' />", PHP_EOL;
-else
-	// only use the default stylesheet if an external one does not exist
+if (file_exists(__DIR__.'/'.$theme)) {
+	// CSS заблокований .htaccess для прямого HTTP-доступу — вбудовуємо inline
+	echo '<style>', file_get_contents(__DIR__.'/'.$theme), '</style>', PHP_EOL;
+} else {
+	// Fallback: вбудований CSS через ?resource=css
 	echo "<link href='?resource=css' rel='stylesheet' type='text/css' />", PHP_EOL;
+}
 
 // HTML: output help text, then exit
 if(isset($_GET['help']))

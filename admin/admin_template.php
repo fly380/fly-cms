@@ -69,7 +69,6 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 					<?php endif; ?>
 					<a href="/admin/logs.php">📄 Переглянути логі</a>
 					<a href="/admin/SQLAdmin/phpadmin.php">🗄️ База даних</a>					
-					<a href="/admin/db_migrate.php">🔄 Міграція на MySQL</a>
 					<a href="/admin/file_manager.php">📁 Файли</a>
 					<a href="/admin/backup.php">💾 Резервне копіювання</a>					
 					<a href="/admin/support.php">🛠️ Підтримка</a>
@@ -103,7 +102,6 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 					<?php endif; ?>
 					<a href="/admin/logs.php">📄 Переглянути логі</a>
 					<a href="/admin/SQLAdmin/phpadmin.php" target="_blank">🗄️ База даних</a>
-					<a href="/admin/db_migrate.php">🔄 Міграція на MySQL</a>
 					<a href="/admin/file_manager.php">📁 Файли</a>
 					<a href="/admin/backup.php">💾 Резервне копіювання</a>
 					<a href="/admin/support.php">🛠️ Підтримка</a>
@@ -132,7 +130,7 @@ $logo_path    = htmlspecialchars($cmsSettings['logo_path']    ?? '');
 	// Автовідкриття підменю якщо поточна сторінка в ньому
 	document.addEventListener('DOMContentLoaded', function() {
 		var cur = window.location.pathname.split('/').pop();
-		var submenuPages = ['user_list.php','invite.php','meta_settings.php','logs.php','phpadmin.php','totp_users.php','totp_setup.php','file_manager.php','backup.php','db_migrate.php','support.php','updater.php','plugins.php'];
+		var submenuPages = ['user_list.php','invite.php','meta_settings.php','logs.php','phpadmin.php','totp_users.php','totp_setup.php','file_manager.php','backup.php','support.php','updater.php','plugins.php'];
 		if (submenuPages.some(function(p){ return cur.indexOf(p) !== -1; })) {
 			document.querySelectorAll('.sidebar-submenu-toggle').forEach(function(btn) {
 				btn.classList.add('open');

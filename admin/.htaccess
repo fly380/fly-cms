@@ -6,12 +6,3 @@ Options -Indexes
     Order Allow,Deny
     Deny from all
 </FilesMatch>
-
-# Захист паролем для доступу до адмінки
-
-<Limit GET POST>
-	require valid-user
-</Limit>
-AuthType Basic
-AuthName "/www/starkon.gov.ua/pass/admin"
-AuthUserFile /home/h72802/data/etc/1565121.passwd

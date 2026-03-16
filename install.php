@@ -1,7 +1,7 @@
 <?php
 /**
  * ╔══════════════════════════════════════════════╗
- * ║  fly-CMS  ·  Інсталятор  ·  v1.0            ║
+ * ║  fly-CMS  ·  Інсталятор  ·  v1.2            ║
  * ║  Помістіть у корінь сайту, відкрийте в      ║
  * ║  браузері. Після встановлення самовидаляється║
  * ╚══════════════════════════════════════════════╝
@@ -9,8 +9,8 @@
  * Захист: якщо data/.installed існує → сторінка заблокована.
  */
 
-define('FLY_INSTALLER_VER', '1.0.0');
-define('FLY_CMS_VER',       '2.7.0-AI');
+define('FLY_INSTALLER_VER', '1.2.0');
+define('FLY_CMS_VER',       '2.9.0-AI');
 
 // ─────────────────────────────────────────────────────────────────
 // Bootstrap: сесія + ROOT
@@ -25,11 +25,7 @@ $ROOT = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
 // Захист від повторної інсталяції
 // ─────────────────────────────────────────────────────────────────
 function is_installed(string $root): bool {
-    if (file_exists($root . '/data/.installed')) return true;
-    foreach ([$root . '/../cms_storage/.env', $root . '/.env'] as $e) {
-        if (file_exists($e) && str_contains(file_get_contents($e), 'DB_DRIVER=')) return true;
-    }
-    return false;
+    return file_exists($root . '/data/.installed');
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -41,7 +37,6 @@ function get_requirements(string $root): array {
     return [
         ['name'=>'PHP ≥ 8.1',        'ok'=>version_compare(PHP_VERSION,'8.1','>='), 'val'=>PHP_VERSION,     'critical'=>true],
         ['name'=>'PDO SQLite',        'ok'=>in_array('sqlite',$drivers),             'val'=>in_array('sqlite',$drivers)?'✓ є':'✗ немає', 'critical'=>true],
-        ['name'=>'PDO MySQL',         'ok'=>in_array('mysql',$drivers),              'val'=>in_array('mysql',$drivers)?'✓ є':'не потрібно для SQLite', 'critical'=>false],
         ['name'=>'JSON',              'ok'=>function_exists('json_encode'),           'val'=>'✓',             'critical'=>true],
         ['name'=>'mbstring',          'ok'=>extension_loaded('mbstring'),             'val'=>extension_loaded('mbstring')?'✓':'рекомендовано', 'critical'=>false],
         ['name'=>'ZipArchive',        'ok'=>class_exists('ZipArchive'),              'val'=>class_exists('ZipArchive')?'✓':'потрібен для бекапів', 'critical'=>false],
@@ -58,151 +53,192 @@ function get_requirements(string $root): array {
 function get_sqlite_schema(): string {
     return <<<SQL
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    login TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user',
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    login        TEXT NOT NULL UNIQUE,
+    password     TEXT NOT NULL,
+    role         TEXT NOT NULL DEFAULT 'user',
     display_name TEXT NOT NULL DEFAULT '',
+    email        TEXT DEFAULT NULL,
+    qr_file      TEXT DEFAULT NULL,
     totp_enabled INTEGER NOT NULL DEFAULT 0,
-    totp_secret TEXT DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    totp_secret  TEXT DEFAULT NULL,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS pages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL DEFAULT '',
-    slug TEXT NOT NULL UNIQUE,
-    content TEXT,
-    draft INTEGER NOT NULL DEFAULT 0,
-    visibility TEXT NOT NULL DEFAULT 'public',
-    meta_title TEXT DEFAULT '',
-    meta_description TEXT DEFAULT NULL,
-    custom_css TEXT DEFAULT NULL,
-    custom_js TEXT DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug             TEXT NOT NULL UNIQUE,
+    title            TEXT NOT NULL DEFAULT '',
+    content          TEXT,
+    draft            INTEGER NOT NULL DEFAULT 0,
+    visibility       TEXT NOT NULL DEFAULT 'public',
+    custom_css       TEXT DEFAULT NULL,
+    custom_js        TEXT DEFAULT NULL,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS posts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL DEFAULT '',
-    slug TEXT NOT NULL UNIQUE,
-    content TEXT,
-    excerpt TEXT DEFAULT NULL,
-    draft INTEGER NOT NULL DEFAULT 0,
-    author TEXT DEFAULT '',
-    thumbnail TEXT DEFAULT NULL,
-    views INTEGER NOT NULL DEFAULT 0,
-    published_at DATETIME DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    title          TEXT NOT NULL DEFAULT '',
+    slug           TEXT NOT NULL UNIQUE,
+    content        TEXT,
+    author         TEXT DEFAULT '',
+    draft          INTEGER NOT NULL DEFAULT 0,
+    visibility     TEXT NOT NULL DEFAULT 'public',
+    show_on_main   INTEGER NOT NULL DEFAULT 1,
+    thumbnail      TEXT DEFAULT NULL,
+    meta_title     TEXT DEFAULT NULL,
+    meta_description TEXT DEFAULT NULL,
+    meta_keywords  TEXT DEFAULT NULL,
+    allow_comments INTEGER NOT NULL DEFAULT 1,
+    sticky         INTEGER NOT NULL DEFAULT 0,
+    post_password  TEXT DEFAULT NULL,
+    publish_at     DATETIME DEFAULT NULL,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS categories (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    slug        TEXT NOT NULL UNIQUE,
+    description TEXT DEFAULT NULL,
+    parent_id   INTEGER DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS tags (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL,
+    slug       TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS post_categories (
+    post_id     INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY (post_id, category_id),
+    FOREIGN KEY (post_id)     REFERENCES posts(id)      ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS post_tags (
+    post_id INTEGER NOT NULL,
+    tag_id  INTEGER NOT NULL,
+    PRIMARY KEY (post_id, tag_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id)  REFERENCES tags(id)  ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS menu_items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    title           TEXT NOT NULL,
+    url             TEXT NOT NULL DEFAULT '',
+    position        INTEGER NOT NULL DEFAULT 0,
+    visible         INTEGER NOT NULL DEFAULT 1,
+    auth_only       INTEGER NOT NULL DEFAULT 0,
+    type            TEXT NOT NULL DEFAULT 'link',
+    parent_id       INTEGER DEFAULT NULL,
+    visibility_role TEXT NOT NULL DEFAULT 'all',
+    icon            TEXT DEFAULT '',
+    target          TEXT DEFAULT '_self',
+    lang_settings   TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS main_page (
+    id      INTEGER PRIMARY KEY CHECK (id = 1),
+    title   TEXT,
+    content TEXT
+);
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS theme_settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL DEFAULT '',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE);
-CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE);
-CREATE TABLE IF NOT EXISTS post_categories (post_id INTEGER NOT NULL, category_id INTEGER NOT NULL, PRIMARY KEY (post_id, category_id));
-CREATE TABLE IF NOT EXISTS post_tags (post_id INTEGER NOT NULL, tag_id INTEGER NOT NULL, PRIMARY KEY (post_id, tag_id));
-CREATE TABLE IF NOT EXISTS menu_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    url TEXT NOT NULL,
-    position INTEGER NOT NULL DEFAULT 0,
-    parent_id INTEGER DEFAULT NULL,
-    visibility_role TEXT NOT NULL DEFAULT 'user'
-);
-CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '', updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
-CREATE TABLE IF NOT EXISTS theme_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '', updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS user_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    login TEXT NOT NULL,
-    ip TEXT NOT NULL DEFAULT '',
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    login        TEXT NOT NULL,
+    ip           TEXT NOT NULL DEFAULT '',
     logged_in_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_active INTEGER NOT NULL DEFAULT 1
+    is_active    INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS invitations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    token TEXT NOT NULL UNIQUE,
-    role TEXT NOT NULL DEFAULT 'user',
-    email TEXT DEFAULT NULL,
-    created_by TEXT NOT NULL,
-    expires_at DATETIME DEFAULT NULL,
-    used_at DATETIME DEFAULT NULL,
-    used_by TEXT DEFAULT NULL
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    token       TEXT NOT NULL UNIQUE,
+    email       TEXT DEFAULT NULL,
+    role        TEXT NOT NULL DEFAULT 'user',
+    created_by  TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at  DATETIME NOT NULL,
+    used_at     DATETIME DEFAULT NULL,
+    used_by     TEXT DEFAULT NULL,
+    require_2fa INTEGER NOT NULL DEFAULT 0,
+    email_sent  INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner TEXT NOT NULL,
-    scope TEXT NOT NULL DEFAULT 'personal',
-    title TEXT NOT NULL DEFAULT '',
-    body TEXT NOT NULL DEFAULT '',
-    color TEXT NOT NULL DEFAULT 'yellow',
-    remind_at DATETIME DEFAULT NULL,
-    reminded INTEGER NOT NULL DEFAULT 0,
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner       TEXT NOT NULL,
+    scope       TEXT NOT NULL DEFAULT 'personal',
+    title       TEXT NOT NULL DEFAULT '',
+    body        TEXT NOT NULL DEFAULT '',
+    color       TEXT NOT NULL DEFAULT 'yellow',
+    remind_at   DATETIME DEFAULT NULL,
+    reminded    INTEGER NOT NULL DEFAULT 0,
     linked_type TEXT DEFAULT NULL,
-    linked_id INTEGER DEFAULT NULL,
-    pinned INTEGER NOT NULL DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS backup_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '');
-CREATE TABLE IF NOT EXISTS backup_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    size INTEGER DEFAULT 0,
-    created_by TEXT NOT NULL DEFAULT '',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    note TEXT DEFAULT ''
+    linked_id   INTEGER DEFAULT NULL,
+    pinned      INTEGER NOT NULL DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS post_revisions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    post_id INTEGER NOT NULL,
-    content TEXT NOT NULL,
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id  INTEGER NOT NULL,
+    title    TEXT DEFAULT NULL,
+    content  TEXT NOT NULL DEFAULT '',
     saved_by TEXT DEFAULT NULL,
+    saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    note     TEXT DEFAULT NULL
+);
+CREATE TABLE IF NOT EXISTS backup_settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS backup_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    type       TEXT NOT NULL,
+    filename   TEXT NOT NULL,
+    size       INTEGER DEFAULT 0,
+    created_by TEXT NOT NULL DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    note       TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    uid         TEXT NOT NULL UNIQUE,
+    author      TEXT NOT NULL,
+    subject     TEXT NOT NULL DEFAULT '',
+    category    TEXT NOT NULL DEFAULT 'general',
+    priority    TEXT NOT NULL DEFAULT 'normal',
+    status      TEXT NOT NULL DEFAULT 'open',
+    reply_token TEXT DEFAULT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    closed_at   DATETIME DEFAULT NULL
+);
+CREATE TABLE IF NOT EXISTS support_messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id   INTEGER NOT NULL,
+    sender      TEXT NOT NULL,
+    sender_type TEXT NOT NULL DEFAULT 'user',
+    body        TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS support_attachments (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id INTEGER NOT NULL,
+    filename   TEXT NOT NULL,
+    size       INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 SQL;
-}
-
-// MySQL schema — читаємо з файлу або вбудована копія
-/**
- * Правильно розбиває SQL файл на окремі statements.
- * Відкидає коментарі (--) і SET рядки, але не плутає їх з
- * багаторядковими CREATE TABLE що містять ці рядки всередині.
- */
-function fly_split_sql(string $sql): array {
-    $statements = [];
-    $current    = '';
-
-    foreach (explode("
-", $sql) as $line) {
-        $trimmed = trim($line);
-        // Пропускаємо порожні рядки і однорядкові коментарі і SET команди
-        // АЛЕ лише якщо поточний statement ще не почався
-        if ($current === '') {
-            if ($trimmed === '' || preg_match('/^--/', $trimmed) || preg_match('/^SET\s/i', $trimmed)) {
-                continue;
-            }
-        }
-        $current .= $line . "
-";
-        // Якщо рядок закінчується на ; — statement завершено
-        if (substr($trimmed, -1) === ';') {
-            $stmt = trim(rtrim(trim($current), ';'));
-            if ($stmt !== '') $statements[] = $stmt;
-            $current = '';
-        }
-    }
-    // Залишок без крапки з комою
-    $stmt = trim(rtrim(trim($current), ';'));
-    if ($stmt !== '') $statements[] = $stmt;
-
-    return $statements;
-}
-
-function get_mysql_schema(string $root): string {
-    $f = $root . '/data/mysql_schema.sql';
-    if (file_exists($f)) return file_get_contents($f);
-    // Мінімальна вбудована версія (повна у data/mysql_schema.sql)
-    return file_get_contents(__DIR__ . '/data/mysql_schema.sql') ?: '';
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -218,42 +254,11 @@ if (!empty($_GET['action']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     switch ($_GET['action']) {
 
-        // ── Тест MySQL з'єднання ──────────────────────────────────
-        case 'test_mysql': {
-            ['host'=>$h,'port'=>$p,'db'=>$db,'user'=>$u,'pass'=>$pw] =
-                array_merge(['host'=>'','port'=>'3306','db'=>'','user'=>'','pass'=>''], $b);
-            $create = !empty($b['create_db']);
-            if (!$h||!$u) { echo json_encode(['ok'=>false,'err'=>'Заповніть хост і користувача']); exit; }
-            try {
-                // Підключення без БД для можливості CREATE DATABASE
-                $dsn = "mysql:host={$h};port={$p};charset=utf8mb4";
-                $pdo = new PDO($dsn,$u,$pw,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_TIMEOUT=>5]);
-                $ver = $pdo->query('SELECT VERSION()')->fetchColumn();
-                $msg = ['ok'=>true,'version'=>$ver,'created'=>false];
-                if ($db) {
-                    $exists = $pdo->query("SHOW DATABASES LIKE ".$pdo->quote($db))->fetchColumn();
-                    if (!$exists && $create) {
-                        $pdo->exec("CREATE DATABASE `{$db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                        $msg['created'] = true;
-                    }
-                    $msg['db_exists'] = (bool)$exists;
-                }
-                echo json_encode($msg);
-            } catch (PDOException $e) { echo json_encode(['ok'=>false,'err'=>$e->getMessage()]); }
-            exit;
-        }
-
         // ── Основна інсталяція ────────────────────────────────────
         case 'install': {
-            // Зчитуємо всі поля
-            $driver  = $b['driver']  ?? 'sqlite';
-            $dbHost  = trim($b['db_host']  ?? '127.0.0.1');
-            $dbPort  = trim($b['db_port']  ?? '3306');
-            $dbName  = trim($b['db_name']  ?? 'flycms');
-            $dbUser  = trim($b['db_user']  ?? '');
-            $dbPass  = $b['db_pass']       ?? '';
             $siteName   = trim($b['site_name']  ?? 'Мій сайт');
             $siteDesc   = trim($b['site_desc']  ?? '');
+            $groqApiKey = preg_replace('/[^A-Za-z0-9_\-]/', '', trim($b['groq_api_key'] ?? ''));
             $adminLogin = trim($b['admin_login'] ?? 'admin');
             $adminPass  = $b['admin_pass']       ?? '';
             $adminDisp  = trim($b['admin_disp']  ?? $adminLogin);
@@ -265,7 +270,7 @@ if (!empty($_GET['action']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             if (strlen($adminPass) < 8)
                 { echo json_encode(['ok'=>false,'err'=>'Пароль адміна: мінімум 8 символів']); exit; }
 
-            $log = []; // масив рядків лога
+            $log = [];
 
             try {
                 // 1 ── Директорії ─────────────────────────────────
@@ -278,138 +283,91 @@ if (!empty($_GET['action']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!is_dir($dir) && !mkdir($dir, 0755, true))
                         throw new \RuntimeException("Не вдалося створити: $dir");
                 }
-                // .htaccess захист data/
                 $htData = "$ROOT/data/.htaccess";
                 if (!file_exists($htData)) file_put_contents($htData, "Options -Indexes\nDeny from all\n");
-                // .htaccess uploads — тільки файли, не PHP
                 $htUpl = "$ROOT/uploads/.htaccess";
                 if (!file_exists($htUpl)) file_put_contents($htUpl,
                     "Options -Indexes\n<FilesMatch \"\\.php$\">\n    Deny from all\n</FilesMatch>\n");
                 $log[] = ['ok'=>true,'msg'=>'Директорії та захисні .htaccess створено'];
 
-                // 2 ── База даних ──────────────────────────────────
-                if ($driver === 'mysql') {
-                    $dsn = "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4";
-                    $pdo = new PDO($dsn,$dbUser,$dbPass,[
-                        PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
-                        PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,
-                        PDO::ATTR_EMULATE_PREPARES=>false,
-                    ]);
-                    $log[] = ['ok'=>true,'msg'=>"Підключено до MySQL: {$dbName}@{$dbHost}"];
-                    // Схема
-                    $schema = get_mysql_schema($ROOT);
-                    if (!$schema) throw new \RuntimeException('mysql_schema.sql не знайдено і не вбудований');
-                    // Правильний парсер SQL: фільтруємо коментарі і SET порядково,
-                    // але не відкидаємо цілий багаторядковий блок через них
-                    foreach (fly_split_sql($schema) as $stmt) {
-                        if ($stmt !== '') $pdo->exec($stmt);
-                    }
-                } else {
-                    $sqlitePath = "$ROOT/data/BD/database.sqlite";
-                    $pdo = new PDO("sqlite:$sqlitePath");
-                    $pdo->setAttribute(PDO::ATTR_ERRMODE,            PDO::ERRMODE_EXCEPTION);
-                    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-                    $pdo->exec('PRAGMA journal_mode = WAL');
-                    $pdo->exec('PRAGMA foreign_keys = ON');
-                    $pdo->exec('PRAGMA busy_timeout = 3000');
-                    $log[] = ['ok'=>true,'msg'=>"SQLite створено: data/BD/database.sqlite"];
-                    // Схема
-                    foreach (array_filter(array_map('trim',explode(';',get_sqlite_schema()))) as $stmt) {
-                        if ($stmt) $pdo->exec($stmt);
-                    }
+                // 2 ── SQLite ──────────────────────────────────────
+                $sqlitePath = "$ROOT/data/BD/database.sqlite";
+                $pdo = new PDO("sqlite:$sqlitePath");
+                $pdo->setAttribute(PDO::ATTR_ERRMODE,            PDO::ERRMODE_EXCEPTION);
+                $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                $pdo->exec('PRAGMA journal_mode = WAL');
+                $pdo->exec('PRAGMA foreign_keys = ON');
+                $pdo->exec('PRAGMA busy_timeout = 3000');
+                foreach (array_filter(array_map('trim', explode(';', get_sqlite_schema()))) as $stmt) {
+                    if ($stmt) $pdo->exec($stmt);
                 }
-                $log[] = ['ok'=>true,'msg'=>'Таблиці бази даних створено (16 таблиць)'];
+                $log[] = ['ok'=>true,'msg'=>'SQLite створено: data/BD/database.sqlite (16 таблиць)'];
 
                 // 3 ── Суперадмін ──────────────────────────────────
                 $hash = password_hash($adminPass, PASSWORD_BCRYPT, ['cost'=>12]);
-                $uq = $driver==='mysql'
-                    ? "INSERT INTO users (login,password,role,display_name) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE password=VALUES(password),role='superadmin'"
-                    : "INSERT OR REPLACE INTO users (login,password,role,display_name) VALUES (?,?,?,?)";
-                $pdo->prepare($uq)->execute([$adminLogin,$hash,'superadmin',$adminDisp?:$adminLogin]);
+                $pdo->prepare("INSERT OR REPLACE INTO users (login,password,role,display_name) VALUES (?,?,?,?)")
+                    ->execute([$adminLogin, $hash, 'superadmin', $adminDisp ?: $adminLogin]);
                 $log[] = ['ok'=>true,'msg'=>"Суперадміністратор «{$adminLogin}» створений"];
 
-                // 4 ── Налаштування (settings) ─────────────────────
-                $upsert = $driver==='mysql'
-                    ? "INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)"
-                    : "INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)";
-                $st = $pdo->prepare($upsert);
+                // 4 ── Налаштування ────────────────────────────────
+                $st = $pdo->prepare("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)");
                 foreach ([
-                    ['site_title',    $siteName],
+                    ['site_title',       $siteName],
                     ['meta_description', $siteDesc],
-                    ['meta_keywords', ''],
-                    ['footer_text',   '© '.date('Y').' '.$siteName],
-                    ['cms_name',      'fly-CMS'],
-                    ['cms_version',   FLY_CMS_VER],
-                    ['site_author',   $adminDisp?:$adminLogin],
-                    ['logo_path',     ''],
-                    ['favicon_path',  ''],
-                    ['background_image',''],
-                    ['installed_at',  date('Y-m-d H:i:s')],
-                    ['cms_changelog', FLY_CMS_VER.' — Встановлено через інсталятор '.date('Y-m-d')],
-                ] as [$k,$v]) $st->execute([$k,$v]);
+                    ['meta_keywords',    ''],
+                    ['footer_text',      '© '.date('Y').' '.$siteName],
+                    ['cms_name',         'fly-CMS'],
+                    ['cms_version',      FLY_CMS_VER],
+                    ['site_author',      $adminDisp ?: $adminLogin],
+                    ['logo_path',        ''],
+                    ['favicon_path',     ''],
+                    ['background_image', ''],
+                    ['installed_at',     date('Y-m-d H:i:s')],
+                    ['cms_changelog',    FLY_CMS_VER.' — Встановлено через інсталятор '.date('Y-m-d')],
+                ] as [$k, $v]) $st->execute([$k, $v]);
                 $log[] = ['ok'=>true,'msg'=>'Базові налаштування сайту збережено'];
 
                 // 5 ── Меню ────────────────────────────────────────
-                $mq = $driver==='mysql'
-                    ? "INSERT IGNORE INTO menu_items (title,url,position,visibility_role) VALUES (?,?,?,?)"
-                    : "INSERT OR IGNORE INTO menu_items (title,url,position,visibility_role) VALUES (?,?,?,?)";
-                $mp = $pdo->prepare($mq);
-                $mp->execute(['Головна','/',1,'user']);
-                $mp->execute(['Блог','/blog',2,'user']);
-                $log[] = ['ok'=>true,'msg'=>'Базове меню створено (Головна, Блог)'];
+                $mp = $pdo->prepare("INSERT OR IGNORE INTO menu_items (title,url,position,visible,auth_only,type,visibility_role,icon,target) VALUES (?,?,?,1,?,?,?,?,?)");
+                $mp->execute(['Головна',  '/',                 1, 0, 'link',        'all', 'bi-house',  '_self']);
+                $mp->execute(['Адмінка',  '/admin/index.php',  2, 1, 'link',        'all', 'bi-person', '_self']);
+                $mp->execute(['Вхід',     '',                  3, 0, 'login_logout', 'all', '',          '_self']);
+                $log[] = ['ok'=>true,'msg'=>'Базове меню створено (Головна, Адмінка, Вхід)'];
 
                 // 6 ── Демо-контент ────────────────────────────────
                 if ($createDemo) {
-                    $pq = $driver==='mysql'
-                        ? "INSERT IGNORE INTO pages (title,slug,content,draft,visibility) VALUES (?,?,?,0,'public')"
-                        : "INSERT OR IGNORE INTO pages (title,slug,content,draft,visibility) VALUES (?,?,?,0,'public')";
-                    $pdo->prepare($pq)->execute([
-                        'Ласкаво просимо',
-                        'home',
-                        '<h2>Вітаємо на '.htmlspecialchars($siteName).'!</h2><p>Це ваша перша сторінка. Редагуйте її в адмінці: <strong>Сторінки → Редагувати</strong>.</p>',
-                    ]);
-                    $rq = $driver==='mysql'
-                        ? "INSERT IGNORE INTO posts (title,slug,content,excerpt,draft,author) VALUES (?,?,?,?,0,?)"
-                        : "INSERT OR IGNORE INTO posts (title,slug,content,excerpt,draft,author) VALUES (?,?,?,?,0,?)";
-                    $pdo->prepare($rq)->execute([
-                        'Перший запис у блозі',
-                        'pershyi-zapys',
-                        '<p>Це демонстраційний запис. Ви можете редагувати або видалити його в адмінці.</p><p>fly-CMS дозволяє створювати та публікувати матеріали зручно і швидко.</p>',
-                        'Перший запис у вашому новому блозі на fly-CMS.',
-                        $adminDisp?:$adminLogin,
-                    ]);
-                    $log[] = ['ok'=>true,'msg'=>'Демо-сторінка та тестовий запис створені'];
+                    $pdo->prepare("INSERT OR IGNORE INTO posts (title,slug,content,draft,author) VALUES (?,?,?,0,?)")
+                        ->execute([
+                            'Перший запис у блозі', 'pershyi-zapys',
+                            '<p>Це демонстраційний запис. Ви можете редагувати або видалити його в адмінці.</p><p>fly-CMS дозволяє створювати та публікувати матеріали зручно і швидко.</p>',
+                            $adminDisp ?: $adminLogin,
+                        ]);
+                    $log[] = ['ok'=>true,'msg'=>'Демо-запис у блозі створено'];
                 }
 
                 // 7 ── .env ────────────────────────────────────────
-                // Пробуємо покласти поза webroot
                 $storageDir = dirname($ROOT).'/cms_storage';
-                $envDir     = (is_dir($storageDir)||@mkdir($storageDir,0750,true)) ? $storageDir : $ROOT;
+                $envDir     = (is_dir($storageDir) || @mkdir($storageDir, 0750, true)) ? $storageDir : $ROOT;
                 $envPath    = $envDir.'/.env';
 
                 $env  = "# fly-CMS конфігурація\n# Згенеровано: ".date('Y-m-d H:i:s')."\n\n";
-                $env .= "DB_DRIVER={$driver}\n";
-                if ($driver === 'mysql') {
-                    $env .= "DB_HOST={$dbHost}\nDB_PORT={$dbPort}\nDB_NAME={$dbName}\n";
-                    $env .= "DB_USER={$dbUser}\nDB_PASS={$dbPass}\nDB_CHARSET=utf8mb4\n";
-                }
-                $env .= "\n# AI\nGROQ_API_KEY=\n";
+                $env .= "# AI\nGROQ_API_KEY={$groqApiKey}\n";
                 $env .= "\n# SMTP\nSMTP_ENABLED=false\nSMTP_HOST=smtp.gmail.com\nSMTP_PORT=587\n";
                 $env .= "SMTP_USERNAME=\nSMTP_PASSWORD=\n";
-                $env .= "SMTP_FROM_NAME=".str_replace(["\n","\r"],'',$siteName)."\n";
+                $env .= "SMTP_FROM_NAME=".str_replace(["\n","\r"], '', $siteName)."\n";
                 $env .= "SMTP_FROM_EMAIL=noreply@example.com\nSMTP_ENCRYPTION=tls\n";
-                $env .= "\n# phpLiteAdmin\nPHPLITEADMIN_PASSWORD=".bin2hex(random_bytes(8))."\n";
+                $dbAdminPass = bin2hex(random_bytes(8));
+                $env .= "\n# phpLiteAdmin\nPHPLITEADMIN_PASSWORD={$dbAdminPass}\n";
                 file_put_contents($envPath, $env);
 
-                // Захист .env якщо в webroot
                 if ($envDir === $ROOT) {
-                    $ht = "$ROOT/.htaccess";
+                    $ht  = "$ROOT/.htaccess";
                     $htc = file_exists($ht) ? file_get_contents($ht) : '';
-                    if (!str_contains($htc,'.env')) {
+                    if (!str_contains($htc, '.env')) {
                         file_put_contents($ht, $htc."\n<Files \".env\">\n    Deny from all\n</Files>\n");
                     }
                 }
-                $loc = $envDir===$ROOT ? 'webroot (.htaccess захищений)' : 'поза webroot ✓';
+                $loc = ($envDir === $ROOT) ? 'webroot (.htaccess захищений)' : 'поза webroot ✓';
                 $log[] = ['ok'=>true,'msg'=>".env збережено ({$loc})"];
 
                 // 8 ── Lock-файл ───────────────────────────────────
@@ -417,15 +375,14 @@ if (!empty($_GET['action']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     date('Y-m-d H:i:s')."\n".$adminLogin."\n".FLY_CMS_VER);
                 $log[] = ['ok'=>true,'msg'=>'Інсталяцію завершено ✓'];
 
-                // Зберігаємо для фінального екрана
                 $_SESSION['fly_installed'] = [
-                    'login'  => $adminLogin,
-                    'site'   => $siteName,
-                    'driver' => $driver,
-                    'db'     => $driver==='mysql' ? "{$dbName}@{$dbHost}" : 'data/BD/database.sqlite',
+                    'login'        => $adminLogin,
+                    'site'         => $siteName,
+                    'db'           => 'SQLite · data/BD/database.sqlite',
+                    'db_admin_pass'=> $dbAdminPass,
                 ];
 
-                echo json_encode(['ok'=>true,'log'=>$log]);
+                echo json_encode(['ok'=>true,'log'=>$log,'db_admin_pass'=>$dbAdminPass]);
 
             } catch (\Throwable $e) {
                 $log[] = ['ok'=>false,'msg'=>'ПОМИЛКА: '.$e->getMessage()];
@@ -434,7 +391,6 @@ if (!empty($_GET['action']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // ── Самовидалення ─────────────────────────────────────────
         case 'delete_self': {
             echo json_encode(['ok'=>@unlink(__FILE__)]);
             exit;
@@ -644,22 +600,6 @@ body{
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── DB driver selector ─────────────────────── */
-.driver-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:1.5rem; }
-.driver-card {
-  background:var(--bg3); border:2px solid var(--border2);
-  border-radius:var(--radius); padding:1.1rem 1.25rem;
-  cursor:pointer; transition:all .18s;
-}
-.driver-card:hover    { border-color:var(--accent); }
-.driver-card.selected { border-color:var(--accent); background:rgba(91,127,255,.07); }
-.driver-icon  { font-size:1.6rem; margin-bottom:.4rem; }
-.driver-name  { font-size:.95rem; font-weight:700; }
-.driver-desc  { font-size:.75rem; color:var(--ink3); margin-top:.2rem; }
-.driver-tag   { display:inline-block; font-size:.65rem; font-family:var(--mono); padding:.15rem .5rem; border-radius:4px; margin-top:.4rem; }
-.driver-tag.rec  { background:rgba(52,211,153,.12); color:var(--ok); }
-.driver-tag.opt  { background:rgba(251,191,36,.1);  color:var(--warn); }
-
 /* ── Requirements ───────────────────────────── */
 .req-list { display:flex; flex-direction:column; gap:.3rem; }
 .req-row {
@@ -842,67 +782,15 @@ body{
 <div class="screen" id="s2">
   <div class="card-head">
     <h2>База даних</h2>
-    <p>Оберіть тип сховища. SQLite не потребує сервера — ідеальний старт.</p>
+    <p>fly-CMS використовує SQLite — файлову базу даних, яка не потребує налаштування сервера.</p>
   </div>
   <div class="card-body">
-    <div class="driver-grid">
-      <div class="driver-card selected" id="dSQLite" onclick="setDriver('sqlite')">
-        <div class="driver-icon">🗂</div>
-        <div class="driver-name">SQLite</div>
-        <div class="driver-desc">Файлова БД. Нічого не налаштовувати.</div>
-        <span class="driver-tag rec">Рекомендовано для старту</span>
+    <div class="info-box info">
+      <span>🗂</span>
+      <div>
+        База збережеться у <code style="font-family:var(--mono)">data/BD/database.sqlite</code>.<br>
+        WAL-режим увімкнено автоматично для надійної паралельної роботи.
       </div>
-      <div class="driver-card" id="dMySQL" onclick="setDriver('mysql')">
-        <div class="driver-icon">🐬</div>
-        <div class="driver-name">MySQL</div>
-        <div class="driver-desc">Для серйозного трафіку та масштабування.</div>
-        <span class="driver-tag opt">Потрібен MySQL-сервер</span>
-      </div>
-    </div>
-
-    <div id="sqliteInfo" class="info-box info">
-      <span>ℹ</span>
-      <div>База збережеться у <code style="font-family:var(--mono)">data/BD/database.sqlite</code>.
-      Перейти на MySQL можна пізніше через адмінку без втрати даних.</div>
-    </div>
-
-    <div id="mysqlForm" style="display:none">
-      <div class="row3">
-        <div class="field">
-          <label>Хост</label>
-          <input type="text" id="mHost" value="localhost" placeholder="localhost">
-        </div>
-        <div class="field">
-          <label>Порт</label>
-          <input type="number" id="mPort" value="3306">
-        </div>
-        <div class="field">
-          <label>База даних <span class="req">*</span></label>
-          <input type="text" id="mDb" placeholder="flycms">
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label>Користувач <span class="req">*</span></label>
-          <input type="text" id="mUser" placeholder="flycms_user">
-        </div>
-        <div class="field">
-          <label>Пароль</label>
-          <div class="input-with-btn">
-            <input type="password" id="mPass" placeholder="••••••••">
-            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleVis('mPass',this)">👁</button>
-          </div>
-        </div>
-      </div>
-      <label class="check-row" style="margin-bottom:1rem">
-        <input type="checkbox" id="mCreate" checked>
-        Створити БД автоматично, якщо не існує
-      </label>
-      <div id="mTestRes" style="margin-bottom:.75rem"></div>
-      <button class="btn btn-ghost btn-sm" onclick="testMySQL()">
-        <span id="mTestSpin" style="display:none" class="spin"></span>
-        🔌 Перевірити з'єднання
-      </button>
     </div>
   </div>
   <div class="card-footer">
@@ -933,6 +821,21 @@ body{
       <input type="checkbox" id="createDemo" checked>
       Створити демо-сторінку та тестовий запис у блозі
     </label>
+
+    <div class="field" style="margin-top:1.25rem">
+      <label>GROQ API Key <span style="font-size:.7rem;color:var(--ink3);font-weight:400">(необов'язково)</span></label>
+      <div style="position:relative">
+        <input type="password" id="groqKey" placeholder="gsk_…" autocomplete="off" spellcheck="false"
+               style="padding-right:2.5rem;font-family:var(--mono);letter-spacing:.03em">
+        <button type="button" onclick="toggleVis('groqKey',this)"
+                style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1rem;padding:0">👁</button>
+      </div>
+      <div class="hint">
+        AI-асистент у редакторі постів. Отримати безкоштовно на
+        <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">console.groq.com</a>.
+        Можна додати пізніше в адмінці → <em>AI налаштування</em>.
+      </div>
+    </div>
   </div>
   <div class="card-footer">
     <button class="btn btn-ghost" onclick="goTo(2)">← Назад</button>
@@ -1043,7 +946,7 @@ body{
 const TOK = <?=json_encode($TOK)?>;
 
 // ─── State ───────────────────────────────────────────────────────
-const S = { driver:'sqlite', mysqlOk:true };
+const S = {};
 
 // ─── Navigation ──────────────────────────────────────────────────
 function goTo(n) {
@@ -1078,42 +981,8 @@ function post(action,data){
   }).then(r=>r.json());
 }
 
-// ─── Driver selector ─────────────────────────────────────────────
-function setDriver(d){
-  S.driver=d;
-  g('dSQLite').classList.toggle('selected',d==='sqlite');
-  g('dMySQL') .classList.toggle('selected',d==='mysql');
-  g('sqliteInfo').style.display=d==='sqlite'?'':'none';
-  g('mysqlForm') .style.display=d==='mysql' ?'':'none';
-  S.mysqlOk = d==='sqlite'; // SQLite не потребує перевірки
-}
-
-// ─── MySQL test ───────────────────────────────────────────────────
-async function testMySQL(){
-  const el=g('mTestRes'), sp=g('mTestSpin');
-  sp.style.display='inline-block'; el.innerHTML='';
-  try {
-    const r=await post('test_mysql',{
-      host:v('mHost'),port:v('mPort'),db:v('mDb'),
-      user:v('mUser'),pass:g('mPass').value,
-      create_db:g('mCreate').checked
-    });
-    if(r.ok){
-      const note=r.created?' <em>(БД створено)</em>':r.db_exists?' <em>(БД існує)</em>':'';
-      el.innerHTML=infoBox('success',`MySQL ${r.version}${note}`);
-      S.mysqlOk=true;
-    } else {
-      el.innerHTML=infoBox('error',r.err);
-      S.mysqlOk=false;
-    }
-  } catch(e){ el.innerHTML=infoBox('error',e.message); }
-  sp.style.display='none';
-}
-
-function dbNext(){
-  if(S.driver==='mysql'&&!S.mysqlOk){ alert('Спочатку перевірте з\'єднання з MySQL.'); return; }
-  goTo(3);
-}
+// ─── DB step ─────────────────────────────────────────────────────
+function dbNext(){ goTo(3); }
 
 // ─── Site step ───────────────────────────────────────────────────
 g('siteDesc')?.addEventListener('input',function(){
@@ -1158,11 +1027,9 @@ function adminNext(){
 
 // ─── Summary ─────────────────────────────────────────────────────
 function buildSummary(){
-  const dbDesc = S.driver==='mysql'
-    ? `MySQL · ${v('mDb')}@${v('mHost')}:${v('mPort')}`
-    : 'SQLite · data/BD/database.sqlite';
   const rows=[
-    ['База даних', dbDesc],
+    ['База даних', 'SQLite · data/BD/database.sqlite'],
+    ['GROQ API',   g('groqKey')?.value?.trim() ? '✅ вказано' : '— (можна додати пізніше)'],
     ['Назва сайту', v('siteName')],
     ['Опис', v('siteDesc')||'—'],
     ['Логін адміна', v('aLogin')],
@@ -1186,14 +1053,9 @@ async function doInstall(){
   msg.innerHTML='';
 
   const payload={
-    driver:      S.driver,
-    db_host:     v('mHost')||'localhost',
-    db_port:     v('mPort')||'3306',
-    db_name:     v('mDb'),
-    db_user:     v('mUser'),
-    db_pass:     g('mPass')?.value||'',
     site_name:   v('siteName'),
     site_desc:   v('siteDesc'),
+    groq_api_key: g('groqKey')?.value?.trim() || '',
     admin_login: v('aLogin'),
     admin_pass:  g('aPass').value,
     admin_disp:  v('aDisp'),
@@ -1216,7 +1078,7 @@ async function doInstall(){
       log.innerHTML+='<span style="color:var(--warn)">★ Встановлення успішне!</span>';
       // Самовидалення
       post('delete_self',{}).catch(()=>{});
-      setTimeout(()=>showSuccess(payload),900);
+      setTimeout(()=>showSuccess(payload, r.db_admin_pass||'', payload.groq_api_key||''),900);
     } else {
       msg.innerHTML=infoBox('error',r.err||'Помилка встановлення');
       btn.disabled=false; sp.style.display='none';
@@ -1229,19 +1091,33 @@ async function doInstall(){
   }
 }
 
-function showSuccess(p){
+function showSuccess(p, dbPass, groqKey){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   g('stepsBar').style.display='none';
   g('s6').classList.add('active');
-  const db=S.driver==='mysql'?`MySQL · ${v('mDb')}@${v('mHost')}`:'SQLite · data/BD/database.sqlite';
-  g('finalCreds').innerHTML=[
-    ['URL сайту',  location.origin+'/'],
-    ['Адмінка',    location.origin+'/admin/'],
+  const rows=[
+    ['URL сайту',  `<a href="${location.origin}/" target="_blank">${location.origin}/</a>`],
+    ['Адмінка',    `<a href="${location.origin}/admin/" target="_blank">${location.origin}/admin/</a>`],
     ['Логін',      p.admin_login],
     ['Пароль',     '(вказаний при встановленні)'],
-    ['База даних', db],
+    ['База даних', 'SQLite · data/BD/database.sqlite'],
+    ['DB Manager', `<a href="${location.origin}/admin/SQLAdmin/phpadmin.php" target="_blank">/admin/SQLAdmin/phpadmin.php</a>`],
+    ['Пароль DB',  dbPass ? `<code style="font-family:var(--mono);letter-spacing:.05em;color:var(--ok)">${dbPass}</code>` : '—'],
+    ['GROQ API',   groqKey ? `✅ збережено` : `— <a href="${location.origin}/admin/ai_settings.php" target="_blank" style="font-size:.85em">додати пізніше</a>`],
     ['Версія CMS', '<?=FLY_CMS_VER?>'],
-  ].map(([k,v])=>`<div class="creds-row"><span class="creds-key">${k}</span><span class="creds-val">${v}</span></div>`).join('');
+  ];
+  g('finalCreds').innerHTML=rows
+    .map(([k,v])=>`<div class="creds-row"><span class="creds-key">${k}</span><span class="creds-val">${v}</span></div>`)
+    .join('');
+  if(dbPass){
+    g('finalCreds').insertAdjacentHTML('afterend',
+      `<div class="info-box warn" style="margin-top:1rem"><span>⚠</span><div>
+        Збережіть пароль DB Manager зараз — він більше <strong>ніде не відображається</strong>.
+        Знайти його завжди можна у файлі <code style="font-family:var(--mono)">.env</code>
+        (рядок <code style="font-family:var(--mono)">PHPLITEADMIN_PASSWORD=...</code>).
+      </div></div>`
+    );
+  }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 </script>

@@ -3,7 +3,7 @@
  * data/migrations.php — Централізовані міграції БД
  *
  * Виконуються ОДИН РАЗ при першому виклику за допомогою lock-файлу.
- * Всі ALTER TABLE виключені з admin/functions.php та інших файлів.
+ * При оновленні CMS збільшуй $currentVersion і додавай нові блоки знизу.
  *
  * Підключення:
  *   require_once __DIR__ . '/migrations.php';
@@ -11,15 +11,13 @@
  */
 
 function run_migrations(PDO $pdo): void {
-    // Lock-файл: якщо він існує і в ньому та сама версія — пропускаємо
-    $lockFile = __DIR__ . '/locks/migrations.lock';
-    $currentVersion = 8; // збільшуй при додаванні нових міграцій
+    $lockFile       = __DIR__ . '/locks/migrations.lock';
+    $currentVersion = 9; // збільшуй при додаванні нових міграцій
 
     if (file_exists($lockFile) && (int)file_get_contents($lockFile) >= $currentVersion) {
         return;
     }
 
-    // Гарантуємо існування директорії locks/
     if (!is_dir(dirname($lockFile))) {
         mkdir(dirname($lockFile), 0755, true);
     }
@@ -27,45 +25,72 @@ function run_migrations(PDO $pdo): void {
     try {
         $pdo->beginTransaction();
 
-        // ── Міграція 1: users.display_name ────────────────────────────
+        // ── 1: users ──────────────────────────────────────────────────
         _add_column_if_missing($pdo, 'users', 'display_name', "TEXT NOT NULL DEFAULT ''");
+        _add_column_if_missing($pdo, 'users', 'email',        'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'users', 'qr_file',      'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'users', 'totp_enabled', 'INTEGER NOT NULL DEFAULT 0');
+        _add_column_if_missing($pdo, 'users', 'totp_secret',  'TEXT DEFAULT NULL');
 
-        // ── Міграція 2: users.qr_file ──────────────────────────────────
-        _add_column_if_missing($pdo, 'users', 'qr_file', "TEXT DEFAULT NULL");
+        // ── 2: posts ──────────────────────────────────────────────────
+        _add_column_if_missing($pdo, 'posts', 'visibility',       "TEXT NOT NULL DEFAULT 'public'");
+        _add_column_if_missing($pdo, 'posts', 'show_on_main',     'INTEGER NOT NULL DEFAULT 1');
+        _add_column_if_missing($pdo, 'posts', 'meta_title',       'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'posts', 'meta_description', 'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'posts', 'meta_keywords',    'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'posts', 'allow_comments',   'INTEGER NOT NULL DEFAULT 1');
+        _add_column_if_missing($pdo, 'posts', 'sticky',           'INTEGER NOT NULL DEFAULT 0');
+        _add_column_if_missing($pdo, 'posts', 'post_password',    'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'posts', 'publish_at',       'DATETIME DEFAULT NULL');
+        _add_column_if_missing($pdo, 'posts', 'updated_at',       'DATETIME DEFAULT CURRENT_TIMESTAMP');
 
-        // ── Міграція 3: users.email ────────────────────────────────────
-        _add_column_if_missing($pdo, 'users', 'email', "TEXT DEFAULT NULL");
+        // ── 3: pages ──────────────────────────────────────────────────
+        _add_column_if_missing($pdo, 'pages', 'visibility', "TEXT NOT NULL DEFAULT 'public'");
+        _add_column_if_missing($pdo, 'pages', 'custom_css', 'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'pages', 'custom_js',  'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'pages', 'updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
 
-        // ── Міграція 4: menu_items.visibility_role ────────────────────
-        _add_column_if_missing($pdo, 'menu_items', 'visibility_role', "TEXT DEFAULT 'all'");
+        // ── 4: categories ─────────────────────────────────────────────
+        _add_column_if_missing($pdo, 'categories', 'description', 'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'categories', 'parent_id',   'INTEGER DEFAULT 0');
+        _add_column_if_missing($pdo, 'categories', 'created_at',  'DATETIME DEFAULT CURRENT_TIMESTAMP');
 
-        // ── Міграція 5: menu_items.icon, target, lang_settings ────────
-        _add_column_if_missing($pdo, 'menu_items', 'icon',          "TEXT DEFAULT ''");
-        _add_column_if_missing($pdo, 'menu_items', 'target',        "TEXT DEFAULT '_self'");
-        _add_column_if_missing($pdo, 'menu_items', 'lang_settings', "TEXT DEFAULT ''");
+        // ── 5: tags ───────────────────────────────────────────────────
+        _add_column_if_missing($pdo, 'tags', 'created_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
 
-        // ── Міграція 6: posts.show_on_main ────────────────────────────
-        _add_column_if_missing($pdo, 'posts', 'show_on_main', "INTEGER DEFAULT 1");
+        // ── 6: menu_items ─────────────────────────────────────────────
+        _add_column_if_missing($pdo, 'menu_items', 'visible',         'INTEGER NOT NULL DEFAULT 1');
+        _add_column_if_missing($pdo, 'menu_items', 'auth_only',       'INTEGER NOT NULL DEFAULT 0');
+        _add_column_if_missing($pdo, 'menu_items', 'type',            "TEXT NOT NULL DEFAULT 'link'");
+        _add_column_if_missing($pdo, 'menu_items', 'visibility_role', "TEXT NOT NULL DEFAULT 'all'");
+        _add_column_if_missing($pdo, 'menu_items', 'icon',            "TEXT DEFAULT ''");
+        _add_column_if_missing($pdo, 'menu_items', 'target',          "TEXT DEFAULT '_self'");
+        _add_column_if_missing($pdo, 'menu_items', 'lang_settings',   "TEXT DEFAULT ''");
 
-        // ── Міграція 7: pages.custom_css, custom_js ───────────────────
-        _add_column_if_missing($pdo, 'pages', 'custom_css', "TEXT DEFAULT ''");
-        _add_column_if_missing($pdo, 'pages', 'custom_js',  "TEXT DEFAULT ''");
+        // ── 7: post_revisions ─────────────────────────────────────────
+        _add_column_if_missing($pdo, 'post_revisions', 'title',   'TEXT DEFAULT NULL');
+        _add_column_if_missing($pdo, 'post_revisions', 'saved_at','DATETIME DEFAULT CURRENT_TIMESTAMP');
+        _add_column_if_missing($pdo, 'post_revisions', 'note',    'TEXT DEFAULT NULL');
 
-        // ── Таблиця invitations (якщо не існує) ───────────────────────
-        $pdo->exec("CREATE TABLE IF NOT EXISTS invitations (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            token       TEXT UNIQUE NOT NULL,
-            email       TEXT,
-            role        TEXT DEFAULT 'user',
-            created_by  TEXT NOT NULL,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-            expires_at  DATETIME NOT NULL,
-            used_at     DATETIME,
-            used_by     TEXT,
-            require_2fa INTEGER DEFAULT 0
+        // ── 8: invitations ────────────────────────────────────────────
+        _add_column_if_missing($pdo, 'invitations', 'created_at',  'DATETIME DEFAULT CURRENT_TIMESTAMP');
+        _add_column_if_missing($pdo, 'invitations', 'require_2fa', 'INTEGER NOT NULL DEFAULT 0');
+        _add_column_if_missing($pdo, 'invitations', 'email_sent',  'INTEGER NOT NULL DEFAULT 0');
+
+        // ── 9: нові таблиці (CREATE IF NOT EXISTS — безпечно) ─────────
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS main_page (
+            id      INTEGER PRIMARY KEY CHECK (id = 1),
+            title   TEXT,
+            content TEXT
         )");
 
-        // ── Таблиця notes (якщо не існує) ─────────────────────────────
+        $pdo->exec("CREATE TABLE IF NOT EXISTS theme_settings (
+            key        TEXT PRIMARY KEY,
+            value      TEXT NOT NULL DEFAULT '',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS notes (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             owner       TEXT NOT NULL,
@@ -82,24 +107,86 @@ function run_migrations(PDO $pdo): void {
             updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
-        // ── Таблиця theme_settings (якщо не існує) ────────────────────
-        $pdo->exec("CREATE TABLE IF NOT EXISTS theme_settings (
-            key        TEXT PRIMARY KEY,
-            value      TEXT NOT NULL DEFAULT '',
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        $pdo->exec("CREATE TABLE IF NOT EXISTS invitations (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            token       TEXT NOT NULL UNIQUE,
+            email       TEXT DEFAULT NULL,
+            role        TEXT NOT NULL DEFAULT 'user',
+            created_by  TEXT NOT NULL,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expires_at  DATETIME NOT NULL,
+            used_at     DATETIME DEFAULT NULL,
+            used_by     TEXT DEFAULT NULL,
+            require_2fa INTEGER NOT NULL DEFAULT 0,
+            email_sent  INTEGER NOT NULL DEFAULT 0
         )");
 
-        // ── Міграція 8: superadmin роль ───────────────────────────────
-        // SQLite не підтримує ALTER COLUMN для CHECK constraints,
-        // тому роль superadmin підтримується лише на рівні логіки PHP.
-        // Тут ми лише оновлюємо дефолтні дані: якщо є тільки один admin
-        // і він ще не superadmin — нічого не змінюємо (апгрейд вручну через user_list).
-        // Таблиця invitations: дозволяємо роль superadmin при генерації запрошень.
-        // (значення role TEXT — обмежень CHECK немає, superadmin вже валідне)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS user_sessions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            login        TEXT NOT NULL,
+            ip           TEXT NOT NULL DEFAULT '',
+            logged_in_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_active    INTEGER NOT NULL DEFAULT 1
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS backup_settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL DEFAULT ''
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS backup_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            type       TEXT NOT NULL,
+            filename   TEXT NOT NULL,
+            size       INTEGER DEFAULT 0,
+            created_by TEXT NOT NULL DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            note       TEXT DEFAULT ''
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS post_revisions (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id  INTEGER NOT NULL,
+            title    TEXT DEFAULT NULL,
+            content  TEXT NOT NULL DEFAULT '',
+            saved_by TEXT DEFAULT NULL,
+            saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            note     TEXT DEFAULT NULL
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS support_tickets (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            uid         TEXT NOT NULL UNIQUE,
+            author      TEXT NOT NULL,
+            subject     TEXT NOT NULL DEFAULT '',
+            category    TEXT NOT NULL DEFAULT 'general',
+            priority    TEXT NOT NULL DEFAULT 'normal',
+            status      TEXT NOT NULL DEFAULT 'open',
+            reply_token TEXT DEFAULT NULL,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            closed_at   DATETIME DEFAULT NULL
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS support_messages (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id   INTEGER NOT NULL,
+            sender      TEXT NOT NULL,
+            sender_type TEXT NOT NULL DEFAULT 'user',
+            body        TEXT NOT NULL,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS support_attachments (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER NOT NULL,
+            filename   TEXT NOT NULL,
+            size       INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
 
         $pdo->commit();
-
-        // Записуємо версію в lock-файл
         file_put_contents($lockFile, $currentVersion);
 
     } catch (Exception $e) {
@@ -111,11 +198,15 @@ function run_migrations(PDO $pdo): void {
 }
 
 /**
- * Додає колонку якщо її ще немає (безпечно, без Exception)
+ * Додає колонку якщо її ще немає (безпечно, ігнорує якщо таблиця відсутня)
  */
 function _add_column_if_missing(PDO $pdo, string $table, string $column, string $definition): void {
-    $cols = $pdo->query("PRAGMA table_info({$table})")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array($column, $cols, true)) {
-        $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
+    try {
+        $cols = $pdo->query("PRAGMA table_info({$table})")->fetchAll(PDO::FETCH_COLUMN, 1);
+        if (!empty($cols) && !in_array($column, $cols, true)) {
+            $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
+        }
+    } catch (Exception $e) {
+        error_log("_add_column_if_missing({$table}.{$column}): " . $e->getMessage());
     }
 }

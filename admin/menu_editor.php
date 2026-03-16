@@ -91,7 +91,7 @@ $menu = $db->query("SELECT * FROM menu_items ORDER BY position ASC")->fetchAll(P
 
 // Отримання списку сторінок та записів
 $dbPages = $db->query("SELECT slug, title FROM pages WHERE draft = 0 ORDER BY title")->fetchAll(PDO::FETCH_ASSOC);
-$dbPosts = $db->query("SELECT slug, meta_title as title FROM posts WHERE draft = 0 ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+$dbPosts = $db->query("SELECT slug, COALESCE(meta_title, title) as title FROM posts WHERE draft = 0 ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 
 $filePages = [];
 $directory = __DIR__ . '/../';
@@ -657,8 +657,8 @@ datalist {
                                     </div>
                                 <?php endif; ?>
                                 
-                                <button type="button" class="btn-remove" onclick="removeMenuItem(this)" title="Видалити пункт">
-                                    <i class="bi bi-trash"></i>
+                                <button type="button" class="btn-remove" onclick="confirmRemove(this)" title="Видалити пункт меню">
+                                    <i class="bi bi-trash me-1"></i>Видалити
                                 </button>
                             </div>
                         </div>
@@ -688,6 +688,34 @@ datalist {
                 <i class="bi bi-diagram-3 me-1"></i>
                 Для створення підменю виберіть батьківський пункт
             </span>
+        </div>
+    </div>
+
+    <!-- Модалка підтвердження видалення -->
+    <div class="modal fade" id="deleteMenuModal" tabindex="-1" aria-labelledby="deleteMenuModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" id="deleteMenuModalLabel">
+                        <i class="bi bi-trash text-danger me-2"></i>Видалити пункт меню
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <p class="mb-1">Ви впевнені, що хочете видалити пункт меню
+                        <strong id="deleteMenuItemName" class="text-danger">«...»</strong>?
+                    </p>
+                    <p class="small text-muted mb-0">Цю дію буде застосовано після натискання «Зберегти меню».</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Скасувати
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" id="confirmDeleteBtn">
+                        <i class="bi bi-trash me-1"></i>Так, видалити
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -825,8 +853,8 @@ function addMenuItem() {
                 <label class="form-check-label" for="auth_${key}">🔒</label>
             </div>
             
-            <button type="button" class="btn-remove" onclick="removeMenuItem(this)" title="Видалити пункт">
-                <i class="bi bi-trash"></i>
+            <button type="button" class="btn-remove" onclick="confirmRemove(this)" title="Видалити пункт меню">
+                <i class="bi bi-trash me-1"></i>Видалити
             </button>
         </div>
     `;
@@ -862,8 +890,8 @@ function addDivider() {
                     <input class="form-check-input" type="checkbox" name="menu[${key}][visible]" value="1" id="visible_${key}" checked>
                     <label class="form-check-label" for="visible_${key}">👁️</label>
                 </div>
-                <button type="button" class="btn-remove ms-2" onclick="removeMenuItem(this)" title="Видалити">
-                    <i class="bi bi-trash"></i>
+                <button type="button" class="btn-remove ms-2" onclick="confirmRemove(this)" title="Видалити роздільник">
+                    <i class="bi bi-trash me-1"></i>Видалити
                 </button>
             </div>
         </div>
@@ -872,27 +900,43 @@ function addDivider() {
     makeDraggable(div);
 }
 
-// Видалення пункту меню
-function removeMenuItem(btn) {
-    if (!confirm('Видалити цей пункт меню?')) return;
-    
+// Видалення пункту меню через модалку
+let _pendingRemoveBtn = null;
+
+function confirmRemove(btn) {
     const row = btn.closest('.menu-row');
-    if (row) {
-        const hiddenId = row.querySelector('input[name$="[id]"]');
-        if (hiddenId) {
-            const deleteInput = document.createElement('input');
-            deleteInput.type = 'hidden';
-            deleteInput.name = 'delete_ids[]';
-            deleteInput.value = hiddenId.value;
-            document.getElementById('menuForm').appendChild(deleteInput);
-        }
-        row.remove();
-        
-        // Якщо більше немає пунктів, показуємо повідомлення
-        const container = document.getElementById('menuItems');
-        if (container.children.length === 0) {
-            container.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-list" style="font-size: 48px;"></i><p class="mt-2">Меню порожнє. Додайте перший пункт меню.</p></div>';
-        }
+    const titleInput = row.querySelector('input[name$="[title]"]');
+    const name = titleInput ? (titleInput.value.trim() || 'без назви') : 'цей пункт';
+    document.getElementById('deleteMenuItemName').textContent = '«' + name + '»';
+    _pendingRemoveBtn = btn;
+    const modal = new bootstrap.Modal(document.getElementById('deleteMenuModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+        bootstrap.Modal.getInstance(document.getElementById('deleteMenuModal')).hide();
+        if (!_pendingRemoveBtn) return;
+        removeMenuItem(_pendingRemoveBtn);
+        _pendingRemoveBtn = null;
+    });
+});
+
+function removeMenuItem(btn) {
+    const row = btn.closest('.menu-row');
+    if (!row) return;
+    const hiddenId = row.querySelector('input[name$="[id]"]');
+    if (hiddenId && hiddenId.value) {
+        const deleteInput = document.createElement('input');
+        deleteInput.type = 'hidden';
+        deleteInput.name = 'delete_ids[]';
+        deleteInput.value = hiddenId.value;
+        document.getElementById('menuForm').appendChild(deleteInput);
+    }
+    row.remove();
+    const container = document.getElementById('menuItems');
+    if (container.children.length === 0) {
+        container.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-list" style="font-size: 48px;"></i><p class="mt-2">Меню порожнє. Додайте перший пункт меню.</p></div>';
     }
 }
 

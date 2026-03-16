@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                   placeholder="## Версія 1.0.0 (2024-01-01)
 
 - Додано новий функціонал...\n- Виправлено помилки...\n- Оновлено залежності..."><?php
-$defaultChangelog = '2.8.0-AI - Система плагінів: хук-архітектура (fly_add_action/fly_add_filter), менеджер плагінів в адмінці, встановлення через ZIP. Виправлено підтримку MySQL в config.php (fly_db). Виправлено FLY_ROOT для XAMPP/shared хостингів (__DIR__ замість DOCUMENT_ROOT). Виправлено парсер mysql_schema.sql в install.php (таблиця users більше не пропускається). Два демо-плагіни: ukr-to-lat (транслітерація slug), seo-meta (Open Graph/Twitter Card).
+$defaultChangelog = '2.8.0-AI - Система плагінів: хук-архітектура (fly_add_action/fly_add_filter), менеджер плагінів в адмінці, встановлення через ZIP. Виправлено FLY_ROOT для XAMPP/shared хостингів (__DIR__ замість DOCUMENT_ROOT). Два демо-плагіни: ukr-to-lat (транслітерація slug), seo-meta (Open Graph/Twitter Card).
 
 2.7.0-AI - Система технічної підтримки з тікетами та відповідями розробника прямо в CMS. Єдина SMTP-функція smtp_helper.php з підтримкою SSL/TLS/none. Налаштування SMTP та GitHub через UI (smtp_settings.php). Система автооновлень з GitHub Releases (updater.php). Виправлено SSL-з\'єднання для порту 465 (ukr.net, meta.ua). Сумісність з PHP 7.x.
 

@@ -89,6 +89,57 @@ try { $cats = $db->query("SELECT id,name FROM categories ORDER BY name")->fetchA
 
 $msg = ''; $msgType = 'success'; $activeTab = $_GET['tab'] ?? 'general';
 
+// ── .env helpers (для GROQ API Key) ────────────────────────────────
+function ss_find_env(): string {
+    $root    = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
+    $storage = dirname($root) . '/cms_storage/.env';
+    $local   = $root . '/.env';
+    if (file_exists($storage)) return $storage;
+    if (file_exists($local))   return $local;
+    $dir = dirname($root) . '/cms_storage';
+    if (!is_dir($dir)) @mkdir($dir, 0750, true);
+    return is_writable(dirname($root)) ? $storage : $local;
+}
+function ss_read_env(string $path): array {
+    $data = [];
+    if (!file_exists($path)) return $data;
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#' || !str_contains($line, '=')) continue;
+        [$k, $v] = explode('=', $line, 2);
+        $data[trim($k)] = trim($v);
+    }
+    return $data;
+}
+function ss_write_env(string $path, array $updates): bool {
+    $lines   = file_exists($path) ? file($path, FILE_IGNORE_NEW_LINES) : [];
+    $written = [];
+    foreach ($lines as &$line) {
+        $t = trim($line);
+        if ($t === '' || $t[0] === '#' || !str_contains($t, '=')) continue;
+        [$k] = explode('=', $t, 2);
+        $k = trim($k);
+        if (array_key_exists($k, $updates)) {
+            $line        = $k . '=' . $updates[$k];
+            $written[$k] = true;
+        }
+    }
+    unset($line);
+    $new = [];
+    foreach ($updates as $k => $v) {
+        if (!isset($written[$k])) $new[] = $k . '=' . $v;
+    }
+    if ($new) {
+        $lines[] = '';
+        $lines[] = '# AI (GROQ)';
+        foreach ($new as $l) $lines[] = $l;
+    }
+    return file_put_contents($path, implode("\n", $lines) . "\n") !== false;
+}
+$envPath = ss_find_env();
+$envData = ss_read_env($envPath);
+$groqKey = $envData['GROQ_API_KEY'] ?? '';
+
 // ── DELETE file ─────────────────────────────────────────────────────
 if (isset($_GET['del']) && in_array($_GET['del'],['logo_path','favicon_path','background_image'])) {
     $key = $_GET['del'];
@@ -156,6 +207,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $uploads = is_dir($imgDir) ? array_values(array_filter(scandir($imgDir),fn($f)=>!in_array($f,['.','..']))) : [];
         log_action("⚙️ Оновлено загальні налаштування", $username);
+
+        // ── GROQ API Key ─────────────────────────────────────────
+        $newGroqKey = preg_replace('/[^A-Za-z0-9_\-]/', '', trim($_POST['groq_api_key'] ?? ''));
+        if (ss_write_env($envPath, ['GROQ_API_KEY' => $newGroqKey])) {
+            $groqKey = $newGroqKey;
+            $_ENV['GROQ_API_KEY'] = $newGroqKey;
+            putenv("GROQ_API_KEY={$newGroqKey}");
+            $envData = ss_read_env($envPath);
+        }
+
         $msg = '✅ Загальні налаштування збережено!';
     }
 
@@ -645,6 +706,39 @@ body.fullbleed-page main.content {
         <?php endif; ?>
         <?php endforeach; ?>
 
+      </div>
+    </div>
+
+    <div class="tb-card">
+      <div class="tb-card-h" onclick="tcToggle(this)"><span>🤖 AI (GROQ API)</span><span class="tb-caret">▾</span></div>
+      <div class="tb-card-b">
+        <div class="fi-row">
+          <label class="fi-lbl">
+            GROQ API Key
+            <a href="https://console.groq.com/keys" target="_blank" class="ms-2 small text-muted fw-normal">↗ console.groq.com</a>
+          </label>
+          <div class="input-group input-group-sm">
+            <input type="password"
+                   id="groqKeyField"
+                   name="groq_api_key"
+                   class="form-control form-control-sm font-monospace"
+                   value="<?= htmlspecialchars($groqKey) ?>"
+                   placeholder="gsk_…"
+                   autocomplete="off"
+                   spellcheck="false">
+            <button class="btn btn-outline-secondary btn-sm" type="button"
+                    onclick="const f=document.getElementById('groqKeyField');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'👁':'🙈'">👁</button>
+          </div>
+          <?php if ($groqKey): ?>
+          <div class="form-text text-success">
+            ✅ Ключ встановлено: <code><?= htmlspecialchars(substr($groqKey,0,8)) ?>…<?= htmlspecialchars(substr($groqKey,-4)) ?></code>
+            &nbsp;<a href="#" onclick="document.getElementById('groqKeyField').value='';document.getElementById('groqKeyField').type='text';return false;" class="text-danger small">✕ Очистити</a>
+          </div>
+          <?php else: ?>
+          <div class="form-text text-warning">⚠ Ключ не встановлено — AI-функції в редакторі не працюватимуть.</div>
+          <?php endif; ?>
+          <div class="form-text">Зберігається у <code>.env</code> поза webroot. Безкоштовний tier — мільйони токенів/місяць.</div>
+        </div>
       </div>
     </div>
 
