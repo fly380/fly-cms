@@ -51,6 +51,15 @@ class ViewContext
         return array_merge($ctx, $extra);
     }
 
+    // Дозволяємо плагінам розширювати базовий контекст
+    // (напр. lang-translator додає lt_footer_html, lt_floating_html)
+    public static function applyPluginFilters(array $context): array {
+        if (function_exists('fly_apply_filters')) {
+            $context = fly_apply_filters('cms.twig.context', $context);
+        }
+        return $context;
+    }
+
     /**
      * Будує і повертає дерево пунктів меню з БД.
      */

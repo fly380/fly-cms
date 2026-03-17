@@ -53,44 +53,56 @@ $messages = $msgs->fetchAll();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $body     = trim($_POST['body'] ?? '');
     $devName  = trim($_POST['dev_name'] ?? 'Розробник');
+    $action   = $_POST['action'] ?? 'reply';
 
-    if (!$body) {
-        $flash = 'Введіть текст відповіді.';
-    } else {
-        // Зберегти повідомлення
-        $pdo->prepare("INSERT INTO support_messages (ticket_id, sender, sender_type, body) VALUES (?, ?, 'support', ?)")
-            ->execute([$ticket['id'], $devName, $body]);
-
-        // Оновити тікет — скинути токен (одноразовий), оновити час
-        $pdo->prepare("UPDATE support_tickets SET reply_token=NULL, updated_at=datetime('now'), status='open' WHERE id=?")
+    if ($action === 'close_ticket') {
+        // Закрити тікет без обов'язкового тексту
+        if ($body) {
+            $pdo->prepare("INSERT INTO support_messages (ticket_id, sender, sender_type, body) VALUES (?, ?, 'support', ?)")
+                ->execute([$ticket['id'], $devName, $body]);
+        }
+        $pdo->prepare("UPDATE support_tickets SET reply_token=NULL, status='closed', closed_at=datetime('now'), updated_at=datetime('now') WHERE id=?")
             ->execute([$ticket['id']]);
 
-        // Надіслати email адміну що є відповідь
         $siteName = function_exists('get_setting') ? (get_setting('site_name') ?: get_setting('site_title') ?: 'fly-CMS') : 'fly-CMS';
-        support_reply_notify($ticket, $body, $devName, $siteName);
+        if ($body) {
+            support_reply_notify($ticket, $body, $devName, $siteName, true);
+        }
+        $success = 'closed';
 
-        $success = true;
+    } else {
+        // Звичайна відповідь
+        if (!$body) {
+            $flash = 'Введіть текст відповіді.';
+        } else {
+            $pdo->prepare("INSERT INTO support_messages (ticket_id, sender, sender_type, body) VALUES (?, ?, 'support', ?)")
+                ->execute([$ticket['id'], $devName, $body]);
+
+            // Оновити тікет — скинути токен (одноразовий), оновити час
+            $pdo->prepare("UPDATE support_tickets SET reply_token=NULL, updated_at=datetime('now'), status='open' WHERE id=?")
+                ->execute([$ticket['id']]);
+
+            $siteName = function_exists('get_setting') ? (get_setting('site_name') ?: get_setting('site_title') ?: 'fly-CMS') : 'fly-CMS';
+            support_reply_notify($ticket, $body, $devName, $siteName, false);
+
+            $success = 'replied';
+        }
     }
 }
 
 // ─── Нотифікація адміну про відповідь розробника ─────────────────
-function support_reply_notify(array $ticket, string $body, string $devName, string $siteName): void {
-    $smtpCfg = @include __DIR__ . '/email_config.php';
-    $smtpArr = is_array($smtpCfg) ? (isset($smtpCfg['smtp']) ? $smtpCfg['smtp'] : []) : [];
-    if (empty($smtpArr['enabled']) || empty($smtpArr['host']) || empty($smtpArr['username']) || empty($smtpArr['password'])) return;
+function support_reply_notify(array $ticket, string $body, string $devName, string $siteName, bool $closed = false): void {
+    if (env('SMTP_ENABLED', 'false') !== 'true') return;
+    $host      = env('SMTP_HOST', '');
+    $smtpUser  = env('SMTP_USERNAME', '');
+    $smtpPass  = env('SMTP_PASSWORD', '');
+    if (!$host || !$smtpUser || !$smtpPass) return;
 
-    $host       = $smtpArr['host'];
-    $port       = (int)(isset($smtpArr['port']) ? $smtpArr['port'] : 587);
-    $smtpUser   = $smtpArr['username'];
-    $smtpPass   = $smtpArr['password'];
-    $encryption = isset($smtpArr['encryption']) ? $smtpArr['encryption'] : 'tls';
-    $fromEmail  = isset($smtpArr['from_email']) ? $smtpArr['from_email'] : $smtpUser;
-    $fromName   = isset($smtpArr['from_name'])  ? $smtpArr['from_name']  : 'fly-CMS';
-
-    // Знайти email адміна (SMTP логін як відправник = і як одержувач нотифікації)
     $to = $smtpUser;
 
-    $subject   = '[' . $siteName . ' Support #' . $ticket['uid'] . '] Відповідь розробника: ' . $ticket['subject'];
+    $subject   = '[' . $siteName . ' Support #' . $ticket['uid'] . '] '
+               . ($closed ? '✅ Тікет закрито розробником: ' : 'Відповідь розробника: ')
+               . $ticket['subject'];
     $bodyEsc   = nl2br(htmlspecialchars($body));
     $uid       = $ticket['uid'];
     $subj      = htmlspecialchars($ticket['subject']);
@@ -98,18 +110,20 @@ function support_reply_notify(array $ticket, string $body, string $devName, stri
                . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
                . '/admin/support.php?ticket=' . $ticket['id'];
 
+    $statusBadge = $closed
+        ? '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:#166534">✅ Розробник відповів і <strong>закрив</strong> ваше звернення.</div>'
+        : '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:#166534">✅ Розробник відповів на ваше звернення.</div>';
+
     $body_html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
         . '<body style="font-family:Arial,sans-serif;background:#f0f4fb;padding:20px">'
         . '<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)">'
         . '<div style="background:linear-gradient(135deg,#1a3d6e,#2E5FA3);color:#fff;padding:24px 32px">'
         . '<div style="opacity:.8;font-size:.85rem">fly-CMS &middot; Технічна підтримка</div>'
-        . '<div style="font-size:1.1rem;font-weight:700;margin-top:4px">Відповідь розробника</div>'
+        . '<div style="font-size:1.1rem;font-weight:700;margin-top:4px">' . ($closed ? 'Тікет закрито розробником' : 'Відповідь розробника') . '</div>'
         . '<div style="opacity:.7;font-size:.8rem;font-family:monospace;margin-top:2px">Тікет #' . $uid . ' &middot; ' . $subj . '</div>'
         . '</div>'
         . '<div style="padding:24px 32px">'
-        . '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:#166534">'
-        . '✅ Розробник відповів на ваше звернення. Відповідь збережена в CMS.'
-        . '</div>'
+        . $statusBadge
         . '<div style="background:#f3f4f6;border-left:4px solid #2E5FA3;border-radius:0 8px 8px 0;padding:16px 20px;line-height:1.7;color:#1f2937;font-size:.9rem">'
         . $bodyEsc
         . '</div>'
@@ -121,7 +135,8 @@ function support_reply_notify(array $ticket, string $body, string $devName, stri
         . $siteName . ' &middot; Підтримка</div>'
         . '</div></body></html>';
 
-    $body_text = "Розробник відповів на тікет #{$ticket['uid']}.\n\nТема: {$ticket['subject']}\n\n---\n{$body}\n---\n\nВідкрити в CMS: {$cmsUrl}";
+    $body_text = ($closed ? "Розробник закрив тікет #{$ticket['uid']}." : "Розробник відповів на тікет #{$ticket['uid']}.")
+               . "\n\nТема: {$ticket['subject']}\n\n---\n{$body}\n---\n\nВідкрити в CMS: {$cmsUrl}";
 
     fly_smtp_send($to, $subject, $body_html, $body_text);
 }
@@ -162,6 +177,8 @@ input:focus, textarea:focus { outline:none; border-color:#2E5FA3; box-shadow:0 0
 textarea { resize:vertical; min-height:140px; }
 .btn { display:inline-block; background:#1e3a6e; color:#fff; border:none; padding:12px 28px; border-radius:8px; font-size:.95rem; font-weight:700; cursor:pointer; transition:background .15s; }
 .btn:hover { background:#2E5FA3; }
+.btn-close-ticket { background:#6b7280; }
+.btn-close-ticket:hover { background:#4b5563; }
 .alert-err { background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:12px 16px; color:#991b1b; font-size:.85rem; margin-bottom:16px; }
 .success-box { text-align:center; padding:32px; }
 .success-box .ico { font-size:3.5rem; margin-bottom:12px; }
@@ -186,9 +203,11 @@ textarea { resize:vertical; min-height:140px; }
 
       <?php if ($success): ?>
       <div class="success-box">
-        <div class="ico">✅</div>
-        <h2>Відповідь збережено!</h2>
-        <p>Адміністратора сайту сповіщено листом.<br>Відповідь з'явилася в CMS.</p>
+        <div class="ico"><?= $success === 'closed' ? '🔒' : '✅' ?></div>
+        <h2><?= $success === 'closed' ? 'Тікет закрито!' : 'Відповідь збережено!' ?></h2>
+        <p><?= $success === 'closed'
+            ? 'Тікет закрито. Адміністратора сайту сповіщено листом.'
+            : 'Адміністратора сайту сповіщено листом.<br>Відповідь з\'явилася в CMS.' ?></p>
       </div>
 
       <?php else: ?>
@@ -198,7 +217,7 @@ textarea { resize:vertical; min-height:140px; }
       <?php endif; ?>
 
       <?php if ($ticket['status'] === 'closed'): ?>
-      <div class="ticket-closed">⚠ Тікет закрито адміністратором, але ви все одно можете відповісти.</div>
+      <div class="ticket-closed">⚠ Тікет вже закрито адміністратором, але ви все одно можете відповісти.</div>
       <?php endif; ?>
 
       <!-- Історія переписки -->
@@ -224,15 +243,26 @@ textarea { resize:vertical; min-height:140px; }
 
       <!-- Форма відповіді -->
       <form method="post">
+        <input type="hidden" name="action" value="reply">
         <div class="form-group">
           <label>Ваше ім'я</label>
           <input type="text" name="dev_name" value="Розробник" maxlength="60">
         </div>
         <div class="form-group">
           <label>Відповідь <span style="color:#ef4444">*</span></label>
-          <textarea name="body" placeholder="Напишіть відповідь на звернення..." required></textarea>
+          <textarea name="body" placeholder="Напишіть відповідь на звернення..."></textarea>
         </div>
-        <button type="submit" class="btn">📨 Надіслати відповідь</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button type="submit" class="btn">📨 Надіслати відповідь</button>
+          <button type="submit" class="btn btn-close-ticket"
+            onclick="this.form.querySelector('[name=action]').value='close_ticket'"
+            title="Надіслати відповідь (необов'язково) і закрити тікет">
+            🔒 Закрити тікет
+          </button>
+        </div>
+        <p style="font-size:.75rem;color:#9ca3af;margin-top:10px">
+          «Закрити тікет» — позначить звернення як вирішене. Текст відповіді необов'язковий.
+        </p>
       </form>
 
       <?php endif; ?>

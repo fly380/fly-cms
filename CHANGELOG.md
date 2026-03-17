@@ -4,6 +4,29 @@
 
 ---
 
+## [2.9.3-AI] — 2026-03-17
+
+### Додано
+- **Плагін Language Translator** (`plugins/lang-translator/`) — перекладач сайту на льоту без API-ключа:
+  - Підтримка 10 мов: EN, PL, DE, FR, ES, IT, CS, SK, RO, HU
+  - Три позиції switcher: Navbar (пункт меню `language_switcher`), Footer, Floating (фіксована кнопка)
+  - Три стилі кнопки: прапор + код / тільки прапор / текстовий dropdown
+  - Кеш перекладів у `localStorage` (1–168 год, налаштовується)
+  - Паралельні HTTP-запити до Google Translate (до 3 одночасно) — вдвічі швидше за послідовні
+  - Прогрес-бар вгорі сторінки під час перекладу
+  - Автоінвалідація кешу при зміні налаштувань (`config_hash`)
+  - Налаштування через Адмінка → 🧩 Плагіни → ⚙ Language Translator
+- **Кнопка «↑» прокрутки вгору** (`views/layouts/base.twig`) — з'являється після 300px прокрутки, розміщена праворуч; якщо активний Floating перекладач — автоматично зміщується під нього
+
+### Змінено
+- `assets/js/lang-widget.js` — v5.1: dropdown рендериться в `<body>` з `position:fixed` і динамічним розрахунком позиції (відкривається вгору якщо мало місця знизу); підтримка Footer і Floating позицій
+- `templates/translate.php` — розширено список дозволених мов з 3 до 10
+- `index.php`, `templates/page.php` — підключено `data/plugins.php`; `LT_CONFIG` передається у Twig-контекст через `lt_config_json`
+- `data/ViewContext.php` — додано `applyPluginFilters()` для розширення Twig-контексту плагінами
+- `admin/support_reply.php` — розробник тепер може закрити тікет з форми відповіді кнопкою «🔒 Закрити тікет»; SMTP читається з `.env` замість `email_config.php`
+
+---
+
 ## [2.9.2-AI] — 2026-03-16
 
 ### Виправлено

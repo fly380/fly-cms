@@ -10,7 +10,7 @@
  */
 
 define('FLY_INSTALLER_VER', '1.2.0');
-define('FLY_CMS_VER',       '2.9.2-AI');
+define('FLY_CMS_VER',       '2.9.3-AI');
 
 // ─────────────────────────────────────────────────────────────────
 // Bootstrap: сесія + ROOT

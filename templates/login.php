@@ -50,6 +50,19 @@ if (!empty($_SESSION['totp_pending'])) {
                 $_SESSION['role']     = $_SESSION['pending_role'];
                 log_action("Вхід з 2FA ({$_SESSION['role']})", $_SESSION['username']);
 
+                // Записуємо сесію у user_sessions для Dashboard
+                try {
+                    $ip = $_SERVER['HTTP_CF_CONNECTING_IP']
+                        ?? $_SERVER['HTTP_X_REAL_IP']
+                        ?? $_SERVER['REMOTE_ADDR']
+                        ?? '';
+                    $pdo_sess = fly_db();
+                    $pdo_sess->prepare(
+                        "INSERT INTO user_sessions (login, ip, logged_in_at, last_seen_at, is_active)
+                         VALUES (?, ?, datetime('now','localtime'), datetime('now','localtime'), 1)"
+                    )->execute([$_SESSION['username'], $ip]);
+                } catch (Exception $e) { error_log('user_sessions insert: ' . $e->getMessage()); }
+
                 // Видалення QR-файлу після першого входу
                 try {
                     $pdo_qr = fly_db();
@@ -132,6 +145,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['totp_code'])) {
                         $_SESSION['username'] = $username;
                         $_SESSION['role']     = $user['role'];
                         log_action("Вхід ({$user['role']})", $username);
+
+                        // Записуємо сесію у user_sessions для Dashboard
+                        try {
+                            $ip = $_SERVER['HTTP_CF_CONNECTING_IP']
+                                ?? $_SERVER['HTTP_X_REAL_IP']
+                                ?? $_SERVER['REMOTE_ADDR']
+                                ?? '';
+                            $pdo->prepare(
+                                "INSERT INTO user_sessions (login, ip, logged_in_at, last_seen_at, is_active)
+                                 VALUES (?, ?, datetime('now','localtime'), datetime('now','localtime'), 1)"
+                            )->execute([$username, $ip]);
+                        } catch (Exception $e) { error_log('user_sessions insert: ' . $e->getMessage()); }
 
                         // Видалення QR після першого входу
                         try {

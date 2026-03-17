@@ -18,6 +18,10 @@
   <style>{{ custom_css|sanitize_css }}</style>
   {% endif %}
   {% block head %}{% endblock %}
+  {# LT_CONFIG від плагіна lang-translator #}
+  {% if lt_config_json is defined and lt_config_json %}
+  {{ lt_config_json|raw }}
+  {% endif %}
 </head>
 <body>
 
@@ -60,6 +64,10 @@
     {% if address %}
     <div class="mt-1 small">{{ address|nl2br }}</div>
     {% endif %}
+    {# Switcher у footer (плагін lang-translator) #}
+    {% if lt_footer_html is defined and lt_footer_html %}
+    <div class="mt-2">{{ lt_footer_html|raw }}</div>
+    {% endif %}
   </div>
 </footer>
 
@@ -78,10 +86,45 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{# lang-widget.js — підключається якщо плагін активний (lt_config_json встановлено) #}
+{% if lt_config_json is defined and lt_config_json %}
 <script src="/assets/js/lang-widget.js"></script>
+{% endif %}
 {% if custom_js is defined and custom_js %}
 <script>{{ custom_js|sanitize_js }}</script>
 {% endif %}
 {% block scripts %}{% endblock %}
+{# Floating switcher (плагін lang-translator) #}
+{% if lt_floating_html is defined and lt_floating_html %}
+{{ lt_floating_html|raw }}
+{% endif %}
+
+{# ── Кнопка прокрутки вгору ───────────────────────────────────── #}
+<button id="scrollTopBtn" aria-label="Прокрутити вгору" onclick="window.scrollTo({top:0,behavior:'smooth'})" style="
+    display:none; position:fixed; right:24px; z-index:9990;
+    width:42px; height:42px; border-radius:50%; border:none; cursor:pointer;
+    background:#1e3a6e; color:#fff; font-size:18px; line-height:1;
+    box-shadow:0 3px 12px rgba(0,0,0,.25); transition:opacity .2s, transform .2s;
+    align-items:center; justify-content:center;">↑</button>
+<script>
+(function(){
+    var btn = document.getElementById('scrollTopBtn');
+    if (!btn) return;
+    // Якщо є floating перемикач мов — розміщуємо під ним
+    var hasFloating = window.LT_CONFIG && window.LT_CONFIG.position === 'floating';
+    btn.style.bottom = hasFloating ? '78px' : '24px';
+    window.addEventListener('scroll', function(){
+        if (window.scrollY > 300) {
+            btn.style.display = 'flex';
+            btn.style.opacity = '1';
+        } else {
+            btn.style.opacity = '0';
+            setTimeout(function(){ if(window.scrollY<=300) btn.style.display='none'; }, 200);
+        }
+    }, { passive: true });
+    btn.onmouseenter = function(){ btn.style.transform='scale(1.1)'; };
+    btn.onmouseleave = function(){ btn.style.transform='scale(1)'; };
+})();
+</script>
 </body>
 </html>

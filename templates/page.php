@@ -9,6 +9,7 @@ fly_send_security_headers();
 
 session_start();
 require_once __DIR__ . '/../data/log_action.php';
+require_once __DIR__ . '/../data/plugins.php';
 require_once __DIR__ . '/../data/ViewContext.php';
 require_once __DIR__ . '/../data/TwigFactory.php';
 
@@ -76,4 +77,12 @@ if (($page['type'] ?? '') === 'post' && ts('post_show_related', '1') === '1' && 
 }
 
 $context = ViewContext::getPage($page, $page['content'] ?? '', $relatedPosts);
+$context = ViewContext::applyPluginFilters($context);
+
+// Передаємо LT_CONFIG у Twig-контекст (плагін lang-translator)
+if (function_exists('fly_is_plugin_active') && fly_is_plugin_active('lang-translator') && function_exists('lt_get_config')) {
+    $cfg = lt_get_config();
+    $context['lt_config_json'] = '<script>window.LT_CONFIG=' . json_encode($cfg, JSON_UNESCAPED_UNICODE) . ';</script>';
+}
+
 echo $twig->render('page.twig', $context);

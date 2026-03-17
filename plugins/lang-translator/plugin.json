@@ -1,0 +1,10 @@
+{
+    "slug":        "lang-translator",
+    "name":        "Language Translator",
+    "description": "Перекладач сайту на льоту: UA / EN / PL / DE. Switcher у navbar, footer або floating-кнопка. Переклад через Google Translate без API-ключа, кеш у localStorage 24 год.",
+    "version":     "1.0.0",
+    "author":      "fly-CMS",
+    "icon":        "🌐",
+    "hooks":       ["cms.head", "cms.body.end"],
+    "settings":    true
+}

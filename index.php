@@ -23,6 +23,7 @@ if (file_exists(__DIR__ . '/data/publish_scheduler.php')) {
 }
 
 // Дані та рендер
+require_once __DIR__ . '/data/plugins.php';
 require_once __DIR__ . '/data/HomeService.php';
 require_once __DIR__ . '/data/ViewContext.php';
 require_once __DIR__ . '/data/TwigFactory.php';
@@ -34,6 +35,13 @@ $svc     = new HomeService();
 $posts   = (ts('news_enabled', '1') === '1') ? $svc->getPosts($news_cat, $news_count) : [];
 $context = ViewContext::getIndex($posts, $svc->getMainContent());
 $context['meta_description'] = get_setting('meta_description') ?? '';
+$context = ViewContext::applyPluginFilters($context);
+
+// Передаємо LT_CONFIG у Twig-контекст (плагін lang-translator)
+if (function_exists('fly_is_plugin_active') && fly_is_plugin_active('lang-translator') && function_exists('lt_get_config')) {
+    $cfg = lt_get_config();
+    $context['lt_config_json'] = '<script>window.LT_CONFIG=' . json_encode($cfg, JSON_UNESCAPED_UNICODE) . ';</script>';
+}
 
 $twig = TwigFactory::create();
 echo $twig->render('index.twig', $context);

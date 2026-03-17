@@ -673,9 +673,7 @@ h1 {
             <p class="text-muted small">👥 Облікові записи, ролі та двофакторна автентифікація</p>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-            <a href="email_logs.php" class="btn btn-secondary" style="font-size: 0.9rem; padding: 0.6rem 1.2rem;">
-                <i class="bi bi-file-text me-1"></i> Логи Email
-            </a>
+
             <a href="add_user.php" class="btn btn-success" style="font-size: 1rem; padding: 0.8rem 2rem;">
                 <i class="bi bi-plus-lg me-2"></i> Додати користувача
             </a>

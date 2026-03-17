@@ -36,11 +36,14 @@ require_once __DIR__ . '/../data/rate_limiter.php';
 rate_limit('translate', 20, 60);
 
 $input = json_decode(file_get_contents('php://input'), true);
-$lang = $input['lang'] ?? '';
+$lang  = $input['lang']  ?? '';
 $texts = $input['texts'] ?? [];
 
+// Всі підтримувані мови перекладу (з uk як вихідна)
+$allowed_langs = ['en','pl','de','fr','es','it','cs','sk','ro','hu'];
+
 // Валідація
-if (!in_array($lang, ['en', 'pl', 'de']) || !is_array($texts)) {
+if (!in_array($lang, $allowed_langs, true) || !is_array($texts)) {
     http_response_code(400);
     exit(json_encode(['error' => 'Invalid input']));
 }
